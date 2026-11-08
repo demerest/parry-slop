@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Parry Slop Prototype</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+      touch-action: none;
+      user-select: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      let W = 0;
+      let H = 0;
+      let DPR = 1;
+
+      function resize() {
+        DPR = Math.min(window.devicePixelRatio || 1, 2);
+        W = window.innerWidth;
+        H = window.innerHeight;
+
+        canvas.width = W * DPR;
+        canvas.height = H * DPR;
+        canvas.style.width = W + "px";
+        canvas.style.height = H + "px";
+
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+
+      window.addEventListener("resize", resize);
+      resize();
+
+      const rand = (a, b) => a + Math.random() * (b - a);
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      const storage = {
+        get(key, fallback) {
+          try {
+            const value = localStorage.getItem(key);
+            return value === null ? fallback : value;
+          } catch (error) {
+            return fallback;
+          }
+        },
+        set(key, value) {
+          try {
+            localStorage.setItem(key, String(value));
+          } catch (error) {
+            // ignore
+          }
+        }
+      };
+
+      let audioCtx = null;
+
+      function ensureAudio() {
+        if (!audioCtx) {
+          try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          } catch (error) {
+            audioCtx = null;
+          }
+        }
+
+        if (audioCtx && audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+      }
+
+      function beep(freq = 440, duration = 0.06, type = "square", gain = 0.05, slide = 0) {
+        if (!audioCtx) return;
+
+        const t = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+
+        if (slide) {
+          osc.frequency.exponentialRampToValueAtTime(
+            Math.max(20, freq + slide),
+            t + duration
+          );
+        }
+
+        gainNode.gain.setValueAtTime(gain, t);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc.start(t);
+        osc.stop(t + duration);
+      }
+
+      const ATTACK_TYPES = [
+        {
+          kind: "sword",
+          label: "SWORD",
+          color: "#ff5555",
+          telegraph: 1100,
+          window: 190,
+          weight: 3,
+          weird: false
+        },
+        {
+          kind: "arrow",
+          label: "ARROW",
+          color: "#ffd24d",
+          telegraph: 950,
+          window: 170,
+          weight: 3,
+          weird: false
+        },
+        {
+          kind: "bullet",
+          label: "BULLET",
+          color: "#66ccff",
+          telegraph: 760,
+          window: 140,
+          weight: 2,
+          weird: false
+        },
+        {
+          kind: "fireball",
+          label: "FIREBALL",
+          color: "#ff9933",
+          telegraph: 900,
+          window: 170,
+          weight: 2,
+          weird: false
+        },
+        {
+          kind: "insult",
+          label: "INSULT",
+          color: "#ff66ff",
+          telegraph: 1200,
+          window: 220,
+          weight: 2,
+          weird: true,
+          texts: [
+            "YOUR GAME IS MID",
+            "PARRY IS OVERRATED",
+            "THIS IS A PHASE",
+            "SKILL ISSUE",
+            "NOBODY ASKED"
+          ]
+        },
+        {
+          kind: "popup",
+          label: "POPUP",
+          color: "#7dff7d",
+          telegraph: 1300,
+          window: 230,
+          weight: 2,
+          weird: true,
+          texts: [
+            "COOKIE PREFERENCES",
+            "ACCEPT ALL",
+            "FREE PARRY SKIN",
+            "UPDATE REQUIRED",
+            "ARE YOU HUMAN?"
+          ]
+        },
+        {
+          kind: "tax",
+          label: "TAX",
+          color: "#a3ff6b",
+          telegraph: 1300,
+          window: 240,
+          weight: 1,
+          weird: true,
+          texts: [
+            "TAX AUDIT",
+            "RENT",
+            "STUDENT LOANS",
+            "JURY DUTY"
+          ]
+        },
+        {
+          kind: "ui",
+          label: "UI",
+          color: "#ffffff",
+          telegraph: 1400,
+          window: 250,
+          weight: 1,
+          weird: true,
+          texts: [
+            "HEALTH BAR",
+            "COMBO COUNTER",
+            "PAUSE BUTTON",
+            "TUTORIAL"
+          ]
+        }
+      ];
+
+      function weightedAttackType() {
+        const total = ATTACK_TYPES.reduce((sum, attack) => sum + attack.weight, 0);
+        let roll = Math.random() * total;
+
+        for (const attack of ATTACK_TYPES) {
+          if (roll < attack.weight) {
+            return attack;
+          }
+
+          roll -= attack.weight;
+        }
+
+        return ATTACK_TYPES[0];
+      }
+
+      const state = {
+        screen: "title",
+        time: 0,
+        score: 0,
+        best: Number(storage.get("parrySlopBest", 0)),
+        combo: 0,
+        hp: 3,
+        slop: 0,
+        attacks: [],
+        texts: [],
+        particles: [],
+        shake: 0,
+        flash: 0,
+        hitFlash: 0,
+        parryAnimUntil: 0,
+        hurtAnimUntil: 0,
+        nextSpawnAt: 0,
+        startedAt: 0,
+        gameOverAt: 0,
+        lastInputAt: 0,
+        message: ""
+      };
+
+      function reset() {
+        const now = performance.now();
+
+        state.screen = "playing";
+        state.score = 0;
+        state.combo = 0;
+        state.hp = 3;
+        state.slop = 0;
+
+        state.attacks.length = 0;
+        state.texts.length = 0;
+        state.particles.length = 0;
+
+        state.shake = 0;
+        state.flash = 0;
+        state.hitFlash = 0;
+
+        state.startedAt = now;
+        state.nextSpawnAt = now + 900;
+
+        state.message = "PARRY EVERYTHING";
+
+        addText("PARRY EVERYTHING", W * 0.5, H * 0.22, 34, "#ffffff", 900);
+      }
+
+      function addText(text, x, y, size = 24, color = "#ffffff", life = 700) {
+        state.texts.push({
+          text,
+          x,
+          y,
+          vy: -0.7,
+          life,
+          maxLife: life,
+          color,
+          size
+        });
+      }
+
+      function addParticles(x, y, color, count = 14) {
+        for (let i = 0; i < count; i++) {
+          const angle = rand(0, Math.PI * 2);
+          const speed = rand(1, 6);
+
+          state.particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1,
+            life: rand(250, 650),
+            maxLife: 650,
+            color
+          });
+        }
+      }
+
+      function spawnAttack() {
+        const now = performance.now();
+        const elapsed = (now - state.startedAt) / 1000;
+
+        let type = weightedAttackType();
+
+        // First few seconds are easier.
+        if (elapsed < 5) {
+          type = ATTACK_TYPES[Math.floor(Math.random() * 4)];
+        }
+
+        const telegraph = Math.max(
+          480,
+          type.telegraph - elapsed * 8 + rand(-50, 50)
+        );
+
+        const windowMs = Math.max(
+          95,
+          type.window - elapsed * 0.6
+        );
+
+        const label = type.texts ? pick(type.texts) : type.label;
+
+        state.attacks.push({
+          type: type.kind,
+          label,
+          color: type.color,
+          weird: Boolean(type.weird),
+          spawnTime: now,
+          impactTime: now + telegraph,
+          window: windowMs,
+          resolved: false,
+          success: false,
+          y: rand(H * 0.32, H * 0.62),
+          spin: rand(0, Math.PI * 2)
+        });
+
+        const gapBase = Math.max(620, 1350 - elapsed * 12);
+
+        state.nextSpawnAt = now + telegraph + rand(gapBase * 0.45, gapBase * 0.85);
+      }
+
+      function stickmanX() {
+        return W * 0.24;
+      }
+
+      function groundY() {
+        return H * 0.72;
+      }
+
+      function tryParry() {
+        const now = performance.now();
+
+        ensureAudio();
+
+        if (state.screen === "title") {
+          reset();
+          return;
+        }
+
+        if (state.screen === "gameover") {
+          if (now - state.gameOverAt > 500) {
+            reset();
+          }
+          return;
+        }
+
+        // Tiny input cooldown to prevent pure spam.
+        if (now - state.lastInputAt < 110) {
+          return;
+        }
+
+        state.lastInputAt = now;
+
+        let bestAttack = null;
+        let bestDiff = Infinity;
+
+        for (const attack of state.attacks) {
+          if (attack.resolved) continue;
+
+          const diff = Math.abs(now - attack.impactTime);
+
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestAttack = attack;
+          }
+        }
+
+        if (bestAttack && bestDiff <= bestAttack.window) {
+          bestAttack.resolved = true;
+          bestAttack.success = true;
+
+          const perfect = bestDiff < bestAttack.window * 0.35;
+
+          state.combo++;
+
+          const gain =
+            100 +
+            state.combo * 5 +
+            (perfect ? 150 : 0) +
+            (bestAttack.weird ? 250 : 0);
+
+          state.score += gain;
+
+          state.slop = clamp(
+            state.slop + (bestAttack.weird ? 0.12 : 0.06),
+            0,
+            1
+          );
+
+          state.parryAnimUntil = now + 130;
+          state.flash = 0.22;
+          state.shake = perfect ? 12 : 7;
+
+          const x = stickmanX() + 80;
+          const y = bestAttack.y;
+
+          addParticles(x, y, bestAttack.color, perfect ? 26 : 16);
+
+          addText(
+            perfect ? "PERFECT PARRY" : "PARRY!",
+            x,
+            y - 40,
+            perfect ? 34 : 28,
+            perfect ? "#ffffff" : bestAttack.color,
+            800
+          );
+
+          addText(
+            bestAttack.weird ? `${bestAttack.label} PARRIED` : `+${gain}`,
+            x,
+            y - 75,
+            18,
+            "#ffffff",
+            700
+          );
+
+          if (bestAttack.weird) {
+            addText(
+              pick([
+                "WHAT?",
+                "STOP.",
+                "OKAY.",
+                "NO U.",
+                "TOO FAR.",
+                "CERTIFIED SLOP."
+              ]),
+              W * 0.5,
+              H * 0.18,
+              30,
+              "#ffff66",
+              800
+            );
+          }
+
+          // Keep the pace up after an early successful parry.
+          state.nextSpawnAt = Math.min(
+            state.nextSpawnAt,
+            now + rand(500, 1000)
+          );
+
+          beep(perfect ? 880 : 660, 0.06, "square", 0.05, perfect ? 220 : 80);
+          beep(perfect ? 1320 : 990, 0.08, "triangle", 0.03, 120);
+        } else {
+          state.combo = 0;
+          state.shake = Math.max(state.shake, 3);
+
+          const early = bestAttack && bestAttack.impactTime > now;
+
+          addText(
+            early ? "TOO EARLY" : "WHIFF",
+            stickmanX() + 70,
+            groundY() - 160,
+            24,
+            "#ff8888",
+            600
+          );
+
+          beep(140, 0.07, "sawtooth", 0.03, -40);
+        }
+      }
+
+      window.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        tryParry();
+      }, { passive: false });
+
+      window.addEventListener("keydown", (event) => {
+        if (event.code === "Space" || event.code === "Enter") {
+          event.preventDefault();
+          tryParry();
+        }
+      });
+
+      function update() {
+        const now = performance.now();
+        state.time = now;
+
+        if (state.screen === "playing") {
+          const activeAttacks = state.attacks.filter((attack) => !attack.resolved);
+
+          if (now >= state.nextSpawnAt && activeAttacks.length < 2) {
+            spawnAttack();
+          }
+
+          for (const attack of state.attacks) {
+            if (!attack.resolved && now > attack.impactTime + attack.window) {
+              attack.resolved = true;
+              attack.success = false;
+
+              state.hp--;
+              state.combo = 0;
+
+              state.shake = 18;
+              state.hitFlash = 0.35;
+              state.hurtAnimUntil = now + 250;
+
+              addParticles(stickmanX() + 25, attack.y, "#ff4444", 24);
+
+              addText("HIT!", W * 0.5, H * 0.25, 40, "#ff4444", 900);
+
+              addText(
+                pick([
+                  "YOU FAILED TO PARRY",
+                  "UNPARRIED SLOP",
+                  "THAT WAS PARRYABLE",
+                  "OW."
+                ]),
+                W * 0.5,
+                H * 0.33,
+                22,
+                "#ffffff",
+                900
+              );
+
+              beep(110, 0.14, "sawtooth", 0.07, -70);
+
+              if (state.hp <= 0) {
+                state.screen = "gameover";
+                state.gameOverAt = now;
+                state.best = Math.max(state.best, state.score);
+                storage.set("parrySlopBest", state.best);
+              }
+            }
+          }
+
+          state.attacks = state.attacks.filter(
+            (attack) => !(attack.resolved && now > attack.impactTime + 300)
+          );
+
+          state.slop = Math.max(0, state.slop - 0.0004);
+        }
+
+        state.texts = state.texts.filter((text) => {
+          text.life -= 16;
+          return text.life > 0;
+        });
+
+        for (const text of state.texts) {
+          text.y += text.vy;
+        }
+
+        state.particles = state.particles.filter((particle) => {
+          particle.life -= 16;
+          return particle.life > 0;
+        });
+
+        for (const particle of state.particles) {
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+          particle.vy += 0.12;
+          particle.vx *= 0.99;
+        }
+
+        state.shake *= 0.88;
+        state.flash *= 0.85;
+        state.hitFlash *= 0.9;
+      }
+
+      function drawBackground(now) {
+        if (state.screen === "playing" && state.slop > 0.75) {
+          ctx.fillStyle = `hsl(${(now / 15) % 360}, 30%, 8%)`;
+        } else {
+          ctx.fillStyle = "#111114";
+        }
+
+        ctx.fillRect(0, 0, W, H);
+
+        const y = groundY() + 70;
+
+        ctx.strokeStyle = "rgba(255,255,255,0.18)";
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+
+      function drawStickman(now) {
+        const x = stickmanX();
+        const y = groundY();
+
+        const parrying = now < state.parryAnimUntil;
+        const hurt = now < state.hurtAnimUntil;
+
+        ctx.save();
+        ctx.translate(x, y);
+
+        if (hurt) {
+          ctx.rotate(-0.12);
+        }
+
+        ctx.lineWidth = 6;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = hurt ? "#ff5555" : parrying ? "#ffffff" : "#e8e8e8";
+
+        // Head
+        ctx.beginPath();
+        ctx.arc(0, -95, 18, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Body
+        ctx.beginPath();
+        ctx.moveTo(0, -77);
+        ctx.lineTo(0, -18);
+        ctx.stroke();
+
+        // Legs
+        ctx.beginPath();
+        ctx.moveTo(0, -18);
+        ctx.lineTo(-22, 45);
+        ctx.moveTo(0, -18);
+        ctx.lineTo(22, 45);
+        ctx.stroke();
+
+        // Arms
+        if (parrying) {
+          ctx.beginPath();
+          ctx.moveTo(0, -65);
+          ctx.lineTo(58, -78);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(0, -58);
+          ctx.lineTo(38, -38);
+          ctx.stroke();
+
+          // Parry blade / flash
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = "#ffffff";
+
+          ctx.beginPath();
+          ctx.moveTo(58, -108);
+          ctx.lineTo(75, -38);
+          ctx.stroke();
+
+          ctx.strokeStyle = "rgba(255,255,255,0.4)";
+
+          ctx.beginPath();
+          ctx.arc(70, -72, 42, -1.1, 1.1);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(0, -65);
+          ctx.lineTo(-28, -30);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(0, -60);
+          ctx.lineTo(30, -30);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function attackPosition(attack, now) {
+        const t = clamp(
+          (now - attack.spawnTime) / (attack.impactTime - attack.spawnTime),
+          0,
+          1.15
+        );
+
+        const startX = W + 120;
+        const targetX = stickmanX() + 65;
+
+        return {
+          x: lerp(startX, targetX, t),
+          y: attack.y,
+          t
+        };
+      }
+
+      function drawAttack(attack, now) {
+        const pos = attackPosition(attack, now);
+
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+
+        ctx.fillStyle = attack.color;
+        ctx.strokeStyle = attack.color;
+
+        if (attack.type === "sword") {
+          ctx.lineWidth = 8;
+
+          ctx.save();
+          ctx.rotate(Math.sin(now / 60 + attack.spin) * 0.2 + 0.5);
+
+          ctx.beginPath();
+          ctx.moveTo(45, -45);
+          ctx.lineTo(-35, 35);
+          ctx.stroke();
+
+          ctx.lineWidth = 5;
+
+          ctx.beginPath();
+          ctx.moveTo(-15, 15);
+          ctx.lineTo(15, 45);
+          ctx.stroke();
+
+          ctx.restore();
+        } else if (attack.type === "arrow") {
+          ctx.lineWidth = 5;
+
+          ctx.beginPath();
+          ctx.moveTo(55, 0);
+          ctx.lineTo(-45, 0);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(55, 0);
+          ctx.lineTo(32, -12);
+          ctx.lineTo(32, 12);
+          ctx.closePath();
+          ctx.fill();
+        } else if (attack.type === "bullet") {
+          ctx.beginPath();
+          ctx.arc(0, 0, 9, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.globalAlpha = 0.35;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(90, 0);
+          ctx.lineWidth = 4;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        } else if (attack.type === "fireball") {
+          ctx.beginPath();
+          ctx.arc(0, 0, 16 + Math.sin(now / 45 + attack.spin) * 3, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.globalAlpha = 0.4;
+          ctx.beginPath();
+          ctx.arc(26, 0, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        } else if (attack.type === "insult") {
+          ctx.font = "bold 20px monospace";
+
+          const w = ctx.measureText(attack.label).width + 28;
+
+          ctx.globalAlpha = 0.92;
+          ctx.fillStyle = "#15151a";
+          ctx.strokeStyle = attack.color;
+          ctx.lineWidth = 3;
+
+          roundRect(-w / 2, -24, w, 48, 12);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = attack.color;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(attack.label, 0, 0);
+        } else if (attack.type === "popup") {
+          ctx.font = "bold 16px monospace";
+
+          const w = ctx.measureText(attack.label).width + 52;
+
+          ctx.fillStyle = "#1b1b22";
+          ctx.strokeStyle = attack.color;
+          ctx.lineWidth = 3;
+
+          roundRect(-w / 2, -34, w, 68, 8);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = attack.color;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(attack.label, 0, -8);
+
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "12px monospace";
+          ctx.fillText("[PARRY TO CLOSE]", 0, 18);
+        } else if (attack.type === "tax") {
+          ctx.font = "bold 18px monospace";
+
+          const w = ctx.measureText(attack.label).width + 36;
+
+          ctx.fillStyle = "#181810";
+          ctx.strokeStyle = attack.color;
+          ctx.lineWidth = 3;
+
+          roundRect(-w / 2, -26, w, 52, 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = attack.color;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(attack.label, 0, 0);
+        } else if (attack.type === "ui") {
+          ctx.font = "bold 18px monospace";
+
+          const w = ctx.measureText(attack.label).width + 34;
+
+          ctx.fillStyle = "#000000";
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2;
+
+          ctx.fillRect(-w / 2, -24, w, 48);
+          ctx.strokeRect(-w / 2, -24, w, 48);
+
+          ctx.fillStyle = attack.color;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(attack.label, 0, 0);
+        }
+
+        // Timing ring
+        if (!attack.resolved) {
+          const remain = attack.impactTime - now;
+          const total = attack.impactTime - attack.spawnTime;
+          const p = clamp(remain / total, 0, 1);
+
+          ctx.globalAlpha = 0.55;
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = p < 0.18 ? "#ffffff" : attack.color;
+
+          ctx.beginPath();
+          ctx.arc(
+            0,
+            0,
+            34 + p * 26,
+            -Math.PI / 2,
+            -Math.PI / 2 + Math.PI * 2 * (1 - p)
+          );
+
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+
+        ctx.restore();
+      }
+
+      function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+
+        ctx.closePath();
+      }
+
+      function drawHUD() {
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 22px monospace";
+
+        ctx.fillText(`SCORE ${state.score}`, 20, 20);
+        ctx.fillText(`BEST ${state.best}`, 20, 50);
+
+        ctx.fillStyle = state.combo > 5 ? "#ffff66" : "#ffffff";
+        ctx.fillText(`COMBO ${state.combo}`, 20, 80);
+
+        // HP
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = i < state.hp ? "#ff4d4d" : "rgba(255,255,255,0.18)";
+          ctx.fillRect(W - 130 + i * 34, 20, 24, 24);
+        }
+
+        // Slop meter
+        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.fillRect(20, H - 44, 220, 16);
+
+        ctx.fillStyle = state.slop > 0.8 ? "#ff4dff" : "#8cff4d";
+        ctx.fillRect(20, H - 44, 220 * state.slop, 16);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "12px monospace";
+        ctx.fillText("SLOP", 20, H - 62);
+      }
+
+      function drawTitle(now) {
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.font = "bold 64px monospace";
+        ctx.fillText("PARRY SLOP", W / 2, H * 0.32);
+
+        ctx.font = "22px monospace";
+        ctx.fillText(
+          "one button. one mistake repeated forever.",
+          W / 2,
+          H * 0.42
+        );
+
+        ctx.font = "bold 28px monospace";
+        ctx.globalAlpha = 0.65 + Math.sin(now / 300) * 0.35;
+        ctx.fillText("CLICK / TAP / SPACE", W / 2, H * 0.58);
+        ctx.globalAlpha = 1;
+
+        ctx.font = "18px monospace";
+        ctx.fillStyle = "rgba(255,255,255,0.75)";
+        ctx.fillText(
+          "parry swords, bullets, pop-ups, taxes, and the concept of responsibility",
+          W / 2,
+          H * 0.67
+        );
+      }
+
+      function drawGameOver() {
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.font = "bold 56px monospace";
+        ctx.fillText("YOU GOT HIT", W / 2, H * 0.35);
+
+        ctx.font = "26px monospace";
+        ctx.fillText(`SCORE ${state.score}`, W / 2, H * 0.46);
+        ctx.fillText(`BEST ${state.best}`, W / 2, H * 0.52);
+
+        ctx.font = "bold 24px monospace";
+        ctx.fillText("CLICK TO PARRY AGAIN", W / 2, H * 0.63);
+      }
+
+      function draw() {
+        const now = performance.now();
+
+        ctx.save();
+
+        if (state.shake > 0.5) {
+          ctx.translate(
+            rand(-state.shake, state.shake),
+            rand(-state.shake, state.shake)
+          );
+        }
+
+        drawBackground(now);
+
+        if (state.screen === "title") {
+          drawStickman(now);
+          drawTitle(now);
+        } else {
+          for (const attack of state.attacks) {
+            drawAttack(attack, now);
+          }
+
+          drawStickman(now);
+
+          for (const particle of state.particles) {
+            ctx.globalAlpha = particle.life / particle.maxLife;
+            ctx.fillStyle = particle.color;
+            ctx.fillRect(particle.x - 2, particle.y - 2, 4, 4);
+          }
+
+          ctx.globalAlpha = 1;
+
+          for (const text of state.texts) {
+            ctx.globalAlpha = text.life / text.maxLife;
+            ctx.fillStyle = text.color;
+            ctx.font = `bold ${text.size}px monospace`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(text.text, text.x, text.y);
+          }
+
+          ctx.globalAlpha = 1;
+
+          drawHUD();
+
+          if (state.flash > 0.01) {
+            ctx.fillStyle = `rgba(255,255,255,${state.flash})`;
+            ctx.fillRect(0, 0, W, H);
+          }
+
+          if (state.hitFlash > 0.01) {
+            ctx.fillStyle = `rgba(255,0,0,${state.hitFlash})`;
+            ctx.fillRect(0, 0, W, H);
+          }
+
+          if (state.screen === "gameover") {
+            drawGameOver();
+          }
+        }
+
+        ctx.restore();
+      }
+
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>

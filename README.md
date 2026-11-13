@@ -1,333 +1,168 @@
-<!-- File: README.md -->
-
 # Parry Slop
 
-**Parry Slop** is a one-button web game where everything is parryable.
-
-Parry swords. Parry arrows. Parry bullets. Parry insults. Parry pop-up ads. Parry tax audits. Parry the UI. Eventually, parry the game itself.
-
-The game is a small, primitive, assetless browser parody of modern action games that treat parrying as the ultimate mechanic.
+**One button. No restraint.** Parry swords, arrows, bullets, fireballs — then insults,
+pop-up ads, tax audits, falling pianos, the health bar, and eventually the parry
+button itself.
 
 > **If it exists, you can parry it.**
 
----
+![Gameplay: a stickman parries a sponsored post while the combo climbs](docs/screenshot.png)
 
 ## Play
 
-Open `index.html` in a browser.
+**Live:** <https://demerest.github.io/parry-slop/>
 
-No build step required.
-
----
+Or open `index.html` in any browser. No build step, no dependencies, no external
+assets. Works from `file://` and from static hosting.
 
 ## Controls
 
 | Input | Action |
 |---|---|
-| Click | Parry |
-| Tap | Parry |
-| Space | Parry |
-| Enter | Parry, optional |
+| Click / tap | Parry |
+| Space / Enter | Parry |
+| P / Esc | Pause |
+| M | Mute |
+| S (title) | PAR ASSIST settings |
 
-That is the entire game.
+That is the entire game. Menus use the same single button.
 
----
+## How it works
 
-## Current Features
-
-The prototype currently includes:
-
-- One-button parry gameplay
-- Stickman protagonist
-- Primitive canvas graphics
-- No external assets
-- Score system
-- Combo system
-- HP system
-- Slop Meter
-- Normal attacks:
-  - Sword
-  - Arrow
-  - Bullet
-  - Fireball
-- Weird attacks:
-  - Insults
-  - Pop-ups
-  - Taxes
-  - UI elements
-- Simple generated sound effects
-- Game over and restart
-- Local best score storage
-
----
-
-## Quick Start
-
-### Option 1: Direct file
-
-1. Save the prototype as `index.html`
-2. Double-click it
-3. Play
-
-### Option 2: Local server
-
-If you prefer serving it locally:
-
-```bash
-python -m http.server 8080
-```
-
-Then open:
-
-```text
-http://localhost:8080
-```
-
----
-
-## How the Game Works
-
-An attack appears and moves toward the stickman.
-
-Each attack has:
-
-- A telegraph
-- An impact moment
-- A parry window
-
-Press the parry button when the attack reaches the stickman.
-
-### Timing results
+An attack telegraphs from the right. A timing ring closes around it. Press when
+the ring closes — at the moment of impact.
 
 | Result | Meaning |
 |---|---|
-| Perfect Parry | Very close to impact |
-| Normal Parry | Within valid window |
-| Too Early | Pressed before valid window |
-| Whiff | Pressed with no relevant attack |
-| Miss | Failed to parry in time |
+| Perfect parry | Inner 35% of the window: bonus score, flash, micro-freeze |
+| Normal parry | Inside the window: score + combo |
+| Too early / whiff | Combo reset + short input lockout (mashing loses) |
+| Miss | -1 HP, combo reset. 3 HP per run |
+| Dashed grey ring | Fake attack. Do **not** parry. Let it pass for a RESTRAINT bonus |
 
-Missing attacks reduces HP.
+Score = 100 base + 5 per combo level + 150 perfect + 250 weird. Best score,
+settings, and lifetime parries persist in `localStorage` (safely ignored when
+unavailable).
 
-When HP reaches zero, the run ends.
+### The Slop Meter
 
----
+Parrying nonsense fills the Slop Meter; it drains over time. Max it out and
+**SLOP OVERFLOW** triggers: eight seconds of glitched background where every
+parry counts as weird.
 
-## Slop Meter
+### Progression
 
-The **Slop Meter** fills as you parry more nonsense.
-
-At high Slop levels, the game becomes more unstable and weird.
-
-This is both a joke system and a light intensity system.
-
----
-
-## Project Structure
-
-Minimal version:
+Endless arcade run in four acts, each unlocking stranger attack categories:
 
 ```text
-parry-slop/
-  README.md
-  index.html
-  docs/
-    game-design-document.md
-    implementation-phases.md
+ACT I   NORMAL GAME STUFF          swords, arrows, bullets, fireballs, insults
+ACT II  WHY IS THERE A TAX AUDIT?  absurd physics, responsibilities, fakes
+ACT III THE INTERFACE IS HOSTILE   internet junk, concepts, meta UI, chains
+ACT IV  PARRY GOD                  everything, tighter timing, fakeouts
 ```
 
-Future version may become:
+Boss events arrive on a fixed interval: **THE ALGORITHM**, **SIR PARRYALOT**,
+**THE UI**, and **THE PARRY BUTTON**. Each is a scripted parry chain with a boss
+HP bar; clear it for +1500. Ignore it and it escapes, remembering everything.
+
+Attack behaviors include standard, delayed (holds, then lunges), lobbed,
+wobble, homing, multi-hit (re-arming rings), and fake. Rhythm chains and rare
+specials (MONDAY, the word PARRY) keep runs varied. Impacts are always spaced
+farther apart than the input cooldown, so no chain is physically unparryable.
+
+### Secrets
+
+- Parry the title logo.
+- Parry the game over screen.
+- 100 parries in one run rolls fake credits.
+- 500 lifetime parries earns a title-screen badge.
+- Max the Slop Meter.
+
+## Accessibility — PAR ASSIST
+
+Settings (gear on title, or `S`): **Big Parry Window** (1.5x), **Reduced Shake**,
+**High Contrast**, **Flash Safe** (no full-screen flashes), **Audio Cues** (tick
+when the window opens). All persist. Attacks are labeled and shaped, never
+color-only. Sound is procedural WebAudio, on by default, mutable from the
+top-right button or `M`, and only starts after a user gesture.
+
+The game auto-pauses when the tab is hidden or the window loses focus; the
+play-clock freezes, so returning never costs you HP.
+
+## Project structure
 
 ```text
 parry-slop/
-  README.md
-  index.html
+  index.html          shell, meta, favicon, script load order
   src/
-    main.js
-    attacks.js
-    audio.js
-    drawing.js
-    state.js
-    ui.js
+    core.js           constants, RNG (seedable), math, safe storage
+    audio.js          procedural WebAudio sound manager + mute
+    attacks.js        51 data-driven attacks, text pools, acts, patterns, bosses
+    game.js           play-clock simulation, parry resolution, director, state
+    render.js         canvas renderer: world, stickman, HUD, screens, effects
+    main.js           boot, input, resize, visibility pause, loop, test hooks
+  tests/
+    harness.html      headless-Chrome assertion harness (synthetic clock)
+    run.js            32 gameplay assertions
+    shot.html         staged scene driver for screenshots
+    run-tests.ps1     runs harness + screenshots via headless Chrome
   docs/
     game-design-document.md
     implementation-phases.md
+    review-notes.md   design review, amendments, verification limits
+    screenshot.png
 ```
 
----
+Plain scripts sharing one `PS` namespace (no ES modules) so `file://` keeps
+working. Gameplay runs on an accumulated play-clock; rendering uses real time.
+Update and draw are fully separated, which is what makes the game testable
+headlessly.
 
-## Design Goals
+## Tests
 
-- One input only
-- Instant restart
-- Clear telegraphs
-- Strong feedback
-- Escalating absurdity
-- No external assets
-- Playable on desktop and mobile
-- Funny even after failing
+No Node required — headless Chrome is the runtime:
 
----
-
-## Development Roadmap
-
-### Phase 1: Core Prototype
-
-Stable one-button parry loop.
-
-### Phase 2: Game Feel
-
-Screen shake, particles, text, sound, timing feedback.
-
-### Phase 3: Content Expansion
-
-More attacks, more jokes, more weirdness.
-
-### Phase 4: Difficulty and Structure
-
-Better pacing, acts, patterns, bosses.
-
-### Phase 5: Polish and Release
-
-Accessibility, performance, mobile compatibility, deployment.
-
-For full details, see:
-
-```text
-docs/implementation-phases.md
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests\run-tests.ps1 -Shots
 ```
 
----
+32 assertions: timing windows, perfect/normal/whiff/miss outcomes, cooldown and
+whiff lockout, death/restart delay, persistence, pause/resume, difficulty
+scaling, seeded determinism, acts, rhythm chains, delayed holds, multi-hit
+re-arms, fake attacks, boss defeat/escape, slop overflow, fake credits, resize,
+restart stability, and a frame-budget smoke test. Screenshots land in
+`%TEMP%\ps-test\`.
 
-## Adding New Attacks
+Verified in headless Chrome at desktop and narrow viewports. Real-device
+Safari/Firefox/Android passes are still open (see `docs/review-notes.md`).
 
-Attacks should be data-driven.
+## Adding attacks
 
-Example:
+Everything is data. Append to `PS.ATTACKS` in `src/attacks.js`:
 
 ```js
 {
-  kind: "popup",
-  label: "COOKIE PREFERENCES",
-  color: "#7dff7d",
-  telegraph: 1300,
-  window: 230,
-  weird: true
+  id: "invoice", kind: "card", label: "INVOICE", color: "#a3ff6b",
+  category: "responsibility", telegraph: 1250, window: 230,
+  weight: 1, weird: true, minAct: 3,
+  parryPool: ["NET 30? NET NEVER.", "PAID IN PARRIES"]
 }
 ```
 
-Good attack ideas:
+Kinds: `blade`, `arrow`, `bullet`, `orb`, `spin`, `crate`, `bubble`, `card`,
+`widget`, `word`, `critter`. Behaviors: `standard`, `delayed`, `lobbed`,
+`wobble`, `homing`, `fake`. Optional `hits` + `hitGap` for multi-hit, `rare`
+for low-probability specials, `labelPool`/`parryPool`/`missPool` for jokes.
 
-- Are easy to read
-- Have a clear impact moment
-- Are funny when parried
-- Fit the game’s deadpan tone
+Good attacks are readable, funny when parried, and deadpan. Bad attacks hide
+their timing or need a second button.
 
-Bad attack ideas:
+## Design docs
 
-- Are impossible to read
-- Require memorization too early
-- Use unfair hidden timing
-- Need extra input types
-- Overload the screen with noise
-
----
-
-## Tone
-
-The game should feel like:
-
-- A web joke
-- A rhythm game
-- A deadpan parody
-- A Flash-era browser game
-- A game jam experiment
-
-The game should not feel like a serious action game.
-
-The stickman remains calm. The world becomes increasingly stupid.
-
----
-
-## Accessibility
-
-Planned or recommended options:
-
-- Larger parry window
-- Reduced screen shake
-- High contrast mode
-- Flash-safe mode
-- Audio timing cues
-- Practice mode
-
-Because the game is timing-based, accessibility is important.
-
----
-
-## Technical Notes
-
-Built with:
-
-- HTML
-- CSS
-- JavaScript
-- Canvas API
-- WebAudio API
-
-No required dependencies.
-
-No external images.
-
-No sprite sheets.
-
-No build tools required for the prototype.
-
----
-
-## Browser Support
-
-Target:
-
-- Desktop Chrome
-- Desktop Firefox
-- Mobile Safari
-- Mobile Chrome
-
-Known concerns:
-
-- Audio may require user interaction before starting
-- `localStorage` may be unavailable in some sandboxed contexts
-- Touch input should use pointer events and prevent default scrolling
-- Timing should use `performance.now()`
-
----
+- `docs/game-design-document.md` — the full design bible
+- `docs/implementation-phases.md` — phase plan with live completion status
+- `docs/review-notes.md` — review findings, amendments, verification limits
 
 ## License
 
-Choose one before public release.
-
-Possible options:
-
-- MIT
-- CC0
-- A custom “parry the license” joke, if appropriate
-
----
-
-## FAQ
-
-### Why is it called Parry Slop?
-
-Because the game is about drowning in parry nonsense.
-
-### Is it finished?
-
-No. It is a prototype / vertical slice.
-
-### Can I add attacks?
-
-Yes. The game is designed around adding more ridiculous attacks.
-
-### Should it be serious?
-
-No. The game should be mechanically tight but emotionally stupid.
+MIT — see `LICENSE`. Parry it freely.

@@ -567,16 +567,16 @@ Goal: publish the game.
 
 ### Release checklist
 
-- [ ] Finalize title
-- [ ] Create short description
-- [ ] Add favicon
-- [ ] Add page title
-- [ ] Add meta description
+- [x] Finalize title
+- [x] Create short description
+- [x] Add favicon
+- [x] Add page title
+- [x] Add meta description
 - [ ] Add social sharing image, optional
 - [ ] Test on live hosting
 - [ ] Test mobile link opening
-- [ ] Add itch.io page or GitHub Pages deployment
-- [ ] Add screenshot or animated GIF
+- [x] Add itch.io page or GitHub Pages deployment
+- [x] Add screenshot or animated GIF
 - [ ] Add feedback link, optional
 
 ### Possible hosting options

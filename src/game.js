@@ -42,6 +42,11 @@ PS.game = (function () {
     act: 1,
     banner: null,
     boss: null,
+    patternQueue: [],
+    patternGap: 400,
+    nextBossAt: 60000,
+    bossIndex: 0,
+    seenFake: false,
     weirdUntil: -1,
     stats: null,
     totalParries: 0,
@@ -96,6 +101,22 @@ PS.game = (function () {
     return w;
   }
 
+  function spaceImpact(clock) {
+    let t = clock;
+    for (let guard = 0; guard < 8; guard++) {
+      let moved = false;
+      for (const a of state.attacks) {
+        if (a.resolved) continue;
+        if (Math.abs(a.impactClock - t) < 160) {
+          t = a.impactClock + 160;
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    return t;
+  }
+
   function spawnAttack(def, opts) {
     opts = opts || {};
     const elapsed = state.clock / 1000;
@@ -127,6 +148,8 @@ PS.game = (function () {
       spin: PS.rand(0, Math.PI * 2),
       boss: Boolean(opts.boss)
     };
+    // impacts must stay farther apart than the input cooldown or chains become unparryable
+    attack.impactClock = spaceImpact(attack.impactClock);
     state.attacks.push(attack);
     return attack;
   }
@@ -137,17 +160,96 @@ PS.game = (function () {
     state.nextSpawnAt = state.clock + PS.rand(gapBase * 0.55, gapBase * 0.95);
   }
 
+  function updateAct() {
+    const secs = state.clock / 1000;
+    for (const act of PS.ACTS) {
+      if (act.n > state.act && secs >= act.at) {
+        state.act = act.n;
+        setBanner(act.name, act.sub, 1700, act.color);
+        PS.audio.play("act");
+      }
+    }
+  }
+
+  function scheduleBoss() {
+    if (state.boss || state.clock < state.nextBossAt) return;
+    const spec = PS.BOSSES[state.bossIndex % PS.BOSSES.length];
+    state.bossIndex++;
+    const totalHits = spec.ids.reduce((n, id) => n + (PS.ATTACK_BY_ID[id].hits || 1), 0);
+    state.boss = {
+      name: spec.name,
+      hp: totalHits,
+      maxHp: totalHits,
+      queue: spec.ids.slice(),
+      downText: spec.downText
+    };
+    state.nextBossAt = state.clock + 75000;
+    setBanner("BOSS // " + spec.name, spec.taunt, 1900, "#ff5252");
+    PS.audio.play("boss");
+  }
+
+  function escapeBoss() {
+    setBanner(state.boss.name + " ESCAPED", "it will remember this", 1500, "#ffd24d");
+    state.boss = null;
+    PS.audio.play("whiff");
+  }
+
   function director() {
     if (state.banner && state.clock < state.banner.until) {
       state.nextSpawnAt = Math.max(state.nextSpawnAt, state.banner.until + 350);
       return;
     }
+    updateAct();
+    scheduleBoss();
+
     const active = state.attacks.filter((a) => !a.resolved).length;
-    if (state.clock >= state.nextSpawnAt && active < S.maxActiveAttacks) {
-      const def = PS.pickAttackDef(state.act);
-      spawnAttack(def);
-      scheduleNext();
+    if (state.clock < state.nextSpawnAt || active >= S.maxActiveAttacks) return;
+
+    if (state.boss) {
+      if (state.boss.queue.length) {
+        const def = PS.ATTACK_BY_ID[state.boss.queue.shift()];
+        spawnAttack(def, {
+          boss: true,
+          telegraph: Math.max(S.minTelegraphMs, def.telegraph * 0.9)
+        });
+        state.nextSpawnAt = state.clock + 620;
+      } else if (!state.attacks.some((a) => a.boss && !a.resolved)) {
+        escapeBoss();
+      }
+      return;
     }
+
+    if (state.patternQueue.length) {
+      spawnAttack(PS.ATTACK_BY_ID[state.patternQueue.shift()]);
+      state.nextSpawnAt = state.clock + state.patternGap;
+      return;
+    }
+
+    const patterns = PS.PATTERNS.filter((p) => p.minAct <= state.act);
+    if (patterns.length && PS.chance(0.14 + state.act * 0.04)) {
+      const pattern = PS.pick(patterns);
+      state.patternQueue = pattern.ids.slice();
+      state.patternGap = pattern.gap;
+      spawnAttack(PS.ATTACK_BY_ID[state.patternQueue.shift()]);
+      state.nextSpawnAt = state.clock + state.patternGap;
+      return;
+    }
+
+    const rares = PS.ATTACKS.filter((d) => d.rare && d.minAct <= state.act);
+    const def = rares.length && PS.chance(0.04) ? PS.pick(rares) : PS.pickAttackDef(state.act);
+    const opts = {};
+    if (def.kind === "blade" && !def.hits && state.act >= 2 && PS.chance(0.22)) {
+      opts.behavior = "delayed";
+    }
+    spawnAttack(def, opts);
+
+    if (def.fake && !state.seenFake) {
+      state.seenFake = true;
+      const layout = PS.layout || { W: 800, H: 600 };
+      addText("DASHED RING = FAKE. DO NOT PARRY.", layout.W * 0.5, layout.H * 0.42, 19, "#9a9aa2", 2400);
+    }
+
+    scheduleNext();
   }
 
   function startRun() {
@@ -173,6 +275,11 @@ PS.game = (function () {
     state.act = 1;
     state.banner = null;
     state.boss = null;
+    state.patternQueue.length = 0;
+    state.patternGap = 400;
+    state.nextBossAt = 60000;
+    state.bossIndex = 0;
+    state.seenFake = false;
     state.weirdUntil = -1;
     state.stats = freshStats();
     state.newBest = false;
@@ -212,10 +319,15 @@ PS.game = (function () {
   function onParrySuccess(attack, diff) {
     const perfect = diff <= attack.window * S.perfectWindowRatio;
 
+    if (state.boss && attack.boss) {
+      state.boss.hp--;
+      if (state.boss.hp <= 0) defeatBoss();
+    }
+
     if (attack.hitsLeft > 1) {
       attack.hitsLeft--;
       attack.spawnClock = state.clock;
-      attack.impactClock = state.clock + attack.hitGap;
+      attack.impactClock = spaceImpact(state.clock + attack.hitGap);
       attack.cued = false;
       state.combo++;
       state.maxCombo = Math.max(state.maxCombo, state.combo);
@@ -252,6 +364,12 @@ PS.game = (function () {
       state.slop + (attack.weird ? S.slopGainWeird : S.slopGainNormal) + (perfect ? S.slopGainPerfect : 0),
       0, 1
     );
+    if (state.slop >= 1 && state.clock >= state.weirdUntil) {
+      state.weirdUntil = state.clock + 8000;
+      state.slop = 0.55;
+      setBanner("SLOP OVERFLOW", "everything is weird now", 1600, "#ff4dff");
+      PS.audio.play("overflow");
+    }
 
     state.parryAnimUntil = state.clock + 150;
     state.flash = state.options.flashSafe ? 0.08 : perfect ? 0.26 : 0.14;
@@ -273,9 +391,8 @@ PS.game = (function () {
 
     state.nextSpawnAt = Math.min(state.nextSpawnAt, state.clock + PS.rand(450, 900));
 
-    if (state.boss) {
-      state.boss.hp--;
-      if (state.boss.hp <= 0) defeatBoss();
+    if (state.stats.parries === 100) {
+      setBanner("CREDITS", "thanks for parrying. there is no ending.", 2200, "#ffffff");
     }
 
     milestoneCheck();

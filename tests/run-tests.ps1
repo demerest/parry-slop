@@ -33,6 +33,7 @@ if ($Shots) {
     @{ url = 'tests/shot.html?scene=play';     size = '1280,800'; name = 'play-desktop' },
     @{ url = 'tests/shot.html?scene=over';     size = '1280,800'; name = 'over-desktop' },
     @{ url = 'tests/shot.html?scene=settings'; size = '1280,800'; name = 'settings-desktop' },
+    @{ url = 'tests/shot.html?scene=boss';     size = '1280,800'; name = 'boss-desktop' },
     @{ url = 'tests/shot.html?scene=play';     size = '500,900';  name = 'play-mobile' },
     @{ url = 'index.html';                    size = '500,900';  name = 'title-mobile' }
   )

@@ -32,6 +32,14 @@
     }
   }
 
+  function advanceToClock(clockTarget) {
+    let guard = 0;
+    while (state.clock < clockTarget && guard++ < 20000) {
+      now += 4;
+      g.tick(now);
+    }
+  }
+
   function fresh() {
     g.startRun();
   }
@@ -280,6 +288,159 @@
       eq(state.screen, "playing", "run " + i + " should still be playing");
       assert(state.attacks.length <= 4, "attack accumulation on run " + i);
     }
+  });
+
+  test("content roster: categories, fakes, multi-hit, rares, boss/pattern ids", function () {
+    assert(PS.ATTACKS.length >= 30, "need >= 30 attacks, got " + PS.ATTACKS.length);
+    const ids = {};
+    const cats = {};
+    let weird = 0, fakes = 0, multi = 0, rares = 0;
+    for (const def of PS.ATTACKS) {
+      assert(!ids[def.id], "duplicate id " + def.id);
+      ids[def.id] = true;
+      cats[def.category] = true;
+      if (def.weird) weird++;
+      if (def.fake) fakes++;
+      if (def.hits > 1) multi++;
+      if (def.rare) rares++;
+    }
+    assert(weird >= 10, "need >= 10 weird attacks");
+    assert(fakes >= 2, "need >= 2 fake attacks");
+    assert(multi >= 2, "need >= 2 multi-hit attacks");
+    assert(rares >= 2, "need >= 2 rare attacks");
+    assert(Object.keys(cats).length >= 6, "need >= 6 categories");
+    for (const b of PS.BOSSES) for (const id of b.ids) assert(ids[id], "boss id missing: " + id);
+    for (const p of PS.PATTERNS) for (const id of p.ids) assert(ids[id], "pattern id missing: " + id);
+    assert(PS.ACTS.length === 4, "four acts");
+  });
+
+  test("acts advance on schedule with name cards", function () {
+    fresh();
+    state.hp = 99;
+    state.clock = 26000;
+    advance(100);
+    eq(state.act, 2, "act 2 at 26s");
+    assert(state.banner && state.banner.title === "ACT II", "act banner");
+    state.clock = 56000;
+    advance(100);
+    eq(state.act, 3, "act 3 at 56s");
+    state.clock = 91000;
+    advance(100);
+    eq(state.act, 4, "act 4 at 91s");
+  });
+
+  test("rhythm chain queue spawns in sequence", function () {
+    fresh();
+    state.patternQueue = ["sword", "arrow"];
+    state.patternGap = 300;
+    state.nextSpawnAt = state.clock;
+    advance(30);
+    assert(state.attacks.some((a) => a.id === "sword"), "chain first");
+    advance(320);
+    assert(state.attacks.some((a) => a.id === "arrow"), "chain second");
+    eq(state.patternQueue.length, 0, "queue drained");
+  });
+
+  test("delayed attack holds then lunges", function () {
+    fresh();
+    const a = g.game.spawnAttack(PS.ATTACK_BY_ID.sword, { behavior: "delayed", telegraph: 1000 });
+    const x1 = PS.render.attackPos(a, a.spawnClock + 500, PS.layout).x;
+    const x2 = PS.render.attackPos(a, a.spawnClock + 650, PS.layout).x;
+    const x3 = PS.render.attackPos(a, a.spawnClock + 950, PS.layout).x;
+    assert(Math.abs(x1 - x2) < 6, "should hold mid-telegraph");
+    assert(x3 < x1 - 50, "should lunge at the end");
+  });
+
+  test("multi-hit attack re-arms and resolves after final hit", function () {
+    fresh();
+    state.nextSpawnAt = 1e9;
+    const a = g.game.spawnAttack(PS.ATTACK_BY_ID.triple);
+    advanceToClock(a.impactClock);
+    g.press();
+    eq(a.hitsLeft, 2, "hits after first parry");
+    assert(!a.resolved, "not resolved yet");
+    advanceToClock(a.impactClock);
+    g.press();
+    eq(a.hitsLeft, 1, "hits after second parry");
+    advanceToClock(a.impactClock);
+    g.press();
+    assert(a.resolved && a.success, "resolved after third");
+    eq(state.combo, 3, "combo counts each hit");
+    eq(state.stats.parries, 3, "parries count each hit");
+  });
+
+  test("fake attack: parrying whiffs, ignoring rewards restraint", function () {
+    fresh();
+    state.nextSpawnAt = 1e9;
+    const a = g.game.spawnAttack(PS.ATTACK_BY_ID.duck);
+    advanceToClock(a.impactClock);
+    state.combo = 5;
+    g.press();
+    eq(state.combo, 0, "parrying a fake resets combo");
+    assert(!a.resolved, "fake not resolved by whiff");
+    const scoreBefore = state.score;
+    advanceToClock(a.impactClock + a.window + 60);
+    assert(a.resolved, "fake passes on its own");
+    eq(state.hp, 3, "fake deals no damage");
+    eq(state.score, scoreBefore + PS.SETTINGS.fakePassScore, "restraint bonus");
+    eq(state.stats.fakesPassed, 1, "fake pass counted");
+  });
+
+  test("boss event: parry chain defeats boss for bonus", function () {
+    fresh();
+    state.nextBossAt = 0;
+    advance(30);
+    assert(state.boss, "boss scheduled");
+    eq(state.boss.name, PS.BOSSES[0].name, "first boss");
+    const scoreBefore = state.score;
+    let guard = 0;
+    while (state.boss && guard++ < 600) {
+      const pending = state.attacks.filter((x) => x.boss && !x.resolved);
+      pending.sort((x, y) => x.impactClock - y.impactClock);
+      const a = pending[0];
+      if (a) {
+        advanceToClock(a.impactClock);
+        g.press();
+      } else {
+        advance(60);
+      }
+    }
+    assert(!state.boss, "boss defeated");
+    eq(state.stats.bosses, 1, "boss kill counted");
+    assert(state.score >= scoreBefore + 1500, "boss bonus");
+  });
+
+  test("boss escapes if its chain is ignored", function () {
+    fresh();
+    state.hp = 99;
+    state.nextBossAt = 0;
+    advance(30);
+    assert(state.boss, "boss scheduled");
+    let guard = 0;
+    while (state.boss && guard++ < 800) advance(120);
+    assert(!state.boss, "boss left");
+    eq(state.stats.bosses, 0, "no kill credited");
+    assert(state.banner && state.banner.title.indexOf("ESCAPED") >= 0, "escape banner");
+  });
+
+  test("slop overflow triggers weird mode", function () {
+    fresh();
+    const a = firstAttack();
+    state.slop = 0.99;
+    advanceToClock(a.impactClock);
+    g.press();
+    assert(state.weirdUntil > state.clock, "weird mode active");
+    assert(Math.abs(state.slop - 0.55) < 0.01, "slop reset after overflow");
+    assert(state.banner && state.banner.title === "SLOP OVERFLOW", "overflow banner");
+  });
+
+  test("100 parries rolls fake credits", function () {
+    fresh();
+    const a = firstAttack();
+    state.stats.parries = 99;
+    advanceToClock(a.impactClock);
+    g.press();
+    assert(state.banner && state.banner.title === "CREDITS", "fake credits banner");
   });
 
   test("no runtime errors", function () {

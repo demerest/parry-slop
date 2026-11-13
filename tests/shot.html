@@ -63,6 +63,16 @@
         advance(2500);
         g.game.pause();
         advance(100);
+      } else if (scene === "boss") {
+        g.startRun();
+        g.state.nextBossAt = 0;
+        advance(30);
+        advance(2600);
+        const a = g.state.attacks.find((x) => x.boss && !x.resolved);
+        if (a) advance((a.impactClock - g.state.clock) * 0.55);
+        g.state.score = 8200;
+        g.state.combo = 21;
+        g.state.slop = 0.6;
       }
       g.tick(now + 16);
       document.title = "shot:" + scene;

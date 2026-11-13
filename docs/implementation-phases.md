@@ -234,70 +234,70 @@ Add attacks across these categories:
 
 #### Physical attacks
 
-- [ ] Axe
-- [ ] Spear
-- [ ] Thrown knife
-- [ ] Boomerang
-- [ ] Grenade
-- [ ] Falling piano
-- [ ] Microwave
-- [ ] Wet fish
+- [x] Axe
+- [x] Spear
+- [x] Thrown knife
+- [x] Boomerang
+- [x] Grenade
+- [x] Falling piano
+- [x] Microwave
+- [x] Wet fish
 
 #### Ranged attacks
 
-- [ ] Laser
-- [ ] Sniper shot
-- [ ] Shotgun spread
-- [ ] Homing bullet
-- [ ] Paper airplane
-- [ ] Angry email
+- [x] Laser
+- [x] Sniper shot
+- [x] Shotgun spread
+- [x] Homing bullet
+- [x] Paper airplane
+- [x] Angry email
 
 #### Emotional attacks
 
-- [ ] Insult
-- [ ] Rejection
-- [ ] Awkward silence
-- [ ] “We need to talk”
-- [ ] Regret
-- [ ] Existential dread
+- [x] Insult
+- [x] Rejection
+- [x] Awkward silence
+- [x] “We need to talk”
+- [x] Regret
+- [x] Existential dread
 
 #### Internet attacks
 
-- [ ] Pop-up ad
-- [ ] Cookie banner
-- [ ] Fake close button
-- [ ] Notification spam
-- [ ] Sponsored post
-- [ ] Comment section
+- [x] Pop-up ad
+- [x] Cookie banner
+- [x] Fake close button
+- [x] Notification spam
+- [x] Sponsored post
+- [x] Comment section
 
 #### Responsibility attacks
 
-- [ ] Tax audit
-- [ ] Rent
-- [ ] Invoice
-- [ ] Jury duty
-- [ ] Parking ticket
-- [ ] Student loan
+- [x] Tax audit
+- [x] Rent
+- [x] Invoice
+- [x] Jury duty
+- [x] Parking ticket
+- [x] Student loan
 
 #### Meta attacks
 
-- [ ] Health bar
-- [ ] Combo counter
-- [ ] Pause button
-- [ ] Settings menu
-- [ ] Tutorial text
-- [ ] Loading screen
+- [x] Health bar
+- [x] Combo counter
+- [x] Pause button
+- [x] Settings menu
+- [x] Tutorial text
+- [x] Loading screen
 
 ### Content implementation tasks
 
-- [ ] Create reusable attack schema
-- [ ] Create attack text pools
-- [ ] Add weighted random selection
-- [ ] Add pattern-based sequences
-- [ ] Add delayed attacks
-- [ ] Add multi-hit attacks
-- [ ] Add fake attacks
-- [ ] Add rare special attacks
+- [x] Create reusable attack schema
+- [x] Create attack text pools
+- [x] Add weighted random selection
+- [x] Add pattern-based sequences
+- [x] Add delayed attacks
+- [x] Add multi-hit attacks
+- [x] Add fake attacks
+- [x] Add rare special attacks
 
 ### Example attack schema
 
@@ -331,13 +331,13 @@ Goal: turn random attacks into a satisfying progression.
 
 ### Difficulty systems
 
-- [ ] Reduce telegraph time over elapsed time
-- [ ] Reduce parry window over elapsed time
-- [ ] Increase spawn frequency over elapsed time
-- [ ] Introduce delayed attacks after early game
-- [ ] Introduce rhythm chains after mid game
-- [ ] Introduce meta attacks after player understands basics
-- [ ] Add boss or special event at fixed intervals
+- [x] Reduce telegraph time over elapsed time
+- [x] Reduce parry window over elapsed time
+- [x] Increase spawn frequency over elapsed time
+- [x] Introduce delayed attacks after early game
+- [x] Introduce rhythm chains after mid game
+- [x] Introduce meta attacks after player understands basics
+- [x] Add boss or special event at fixed intervals
 
 ### Structure options
 

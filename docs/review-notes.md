@@ -87,6 +87,8 @@ See the checkboxes in `implementation-phases.md` — updated as phases land.
   test (update+draw averaged over 300 frames).
 - Screenshots verified at 1280x800 and 500x900 (headless Chrome clamps viewports
   below 500px wide, so narrow-layout checks use 500px).
+- Live hosting verified: Pages build `built`, index/src/screenshot return 200,
+  and the live URL boots headlessly with zero console errors.
 - NOT verified on real devices: mobile Safari, Android Chrome, desktop Firefox,
   low-end hardware. Those Phase 9 boxes stay unchecked on purpose.
 - Object pooling for particles/texts was deemed unnecessary at the 280-particle

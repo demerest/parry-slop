@@ -573,7 +573,7 @@ Goal: publish the game.
 - [x] Add page title
 - [x] Add meta description
 - [ ] Add social sharing image, optional
-- [ ] Test on live hosting
+- [x] Test on live hosting
 - [ ] Test mobile link opening
 - [x] Add itch.io page or GitHub Pages deployment
 - [x] Add screenshot or animated GIF

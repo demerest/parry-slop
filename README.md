@@ -34,7 +34,7 @@ the ring closes — at the moment of impact.
 
 | Result | Meaning |
 |---|---|
-| Perfect parry | Inner 35% of the window: bonus score, flash, micro-freeze |
+| Perfect parry | Inner 35% of the window: bonus score, flash, slow-motion time dilation |
 | Normal parry | Inside the window: score + combo |
 | Too early / whiff | Combo reset + short input lockout (mashing loses) |
 | Miss | -1 HP, combo reset. 3 HP per run |
@@ -82,9 +82,15 @@ farther apart than the input cooldown, so no chain is physically unparryable.
 
 Settings (gear on title, or `S`): **Big Parry Window** (1.5x), **Reduced Shake**,
 **High Contrast**, **Flash Safe** (no full-screen flashes), **Audio Cues** (tick
-when the window opens). All persist. Attacks are labeled and shaped, never
-color-only. Sound is procedural WebAudio, on by default, mutable from the
-top-right button or `M`, and only starts after a user gesture.
+when the window opens), **Slow Motion** (perfect-parry time dilation). All
+persist. Attacks are labeled and shaped, never color-only. Sound is procedural
+WebAudio, on by default, mutable from the top-right button or `M`, and only
+starts after a user gesture.
+
+A perfect parry dilates time for ~420ms: the play-clock ramps down to 22% speed
+and eases back, particles and floating text slow with it, a time ripple expands
+from the parry point, the blade leaves chromatic ghosts, and a pitch-down whoosh
+plays. Turn it off in PAR ASSIST if motion effects bother you.
 
 The game auto-pauses when the tab is hidden or the window loses focus; the
 play-clock freezes, so returning never costs you HP.

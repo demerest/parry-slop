@@ -34,6 +34,8 @@ if ($Shots) {
     @{ url = 'tests/shot.html?scene=over';     size = '1280,800'; name = 'over-desktop' },
     @{ url = 'tests/shot.html?scene=settings'; size = '1280,800'; name = 'settings-desktop' },
     @{ url = 'tests/shot.html?scene=boss';     size = '1280,800'; name = 'boss-desktop' },
+    @{ url = 'tests/shot.html?scene=slowmo';   size = '1280,800'; name = 'slowmo-desktop' },
+    @{ url = 'tests/shot.html?scene=settings&debug=1'; size = '1280,600'; name = 'settings-short' },
     @{ url = 'tests/shot.html?scene=play';     size = '500,900';  name = 'play-mobile' },
     @{ url = 'index.html';                    size = '500,900';  name = 'title-mobile' }
   )

@@ -114,6 +114,20 @@ PS.render = (function () {
       }
     }
 
+    if (st.screen === "playing" && now < st.slowmoUntil) {
+      ctx.fillStyle = hc ? "rgba(89,194,255,0.1)" : "rgba(89,194,255,0.05)";
+      ctx.fillRect(0, 0, L.W, L.H);
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 7; i++) {
+        const y = (i * 137 + now * 0.02) % L.H;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(L.W, y);
+        ctx.stroke();
+      }
+    }
+
     const groundLine = L.groundY + 52 * L.s;
 
     ctx.fillStyle = hc ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.03)";
@@ -231,6 +245,17 @@ PS.render = (function () {
       ctx.beginPath();
       ctx.arc(70, -72, 42, -1.1, 1.1);
       ctx.stroke();
+
+      if (now < st.slowmoUntil) {
+        ctx.strokeStyle = "rgba(255,102,217,0.35)";
+        ctx.beginPath();
+        ctx.arc(66, -72, 42, -1.1, 1.1);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(89,194,255,0.35)";
+        ctx.beginPath();
+        ctx.arc(74, -72, 42, -1.1, 1.1);
+        ctx.stroke();
+      }
     } else if (dead) {
       ctx.beginPath();
       ctx.moveTo(0, -65);
@@ -996,7 +1021,8 @@ PS.render = (function () {
     { key: "reducedShake", label: "REDUCED SHAKE", hint: "calmer camera" },
     { key: "highContrast", label: "HIGH CONTRAST", hint: "brighter lines, no noise" },
     { key: "flashSafe", label: "FLASH SAFE", hint: "no full-screen flashes" },
-    { key: "audioCues", label: "AUDIO CUES", hint: "tick when the window opens" }
+    { key: "audioCues", label: "AUDIO CUES", hint: "tick when the window opens" },
+    { key: "slowMo", label: "SLOW MOTION", hint: "time dilation on perfect parry" }
   ];
 
   function drawSettings(now, L, st) {
@@ -1004,8 +1030,8 @@ PS.render = (function () {
     ctx.fillRect(0, 0, L.W, L.H);
 
     const pw = Math.min(L.W * 0.92, 470);
-    const rowH = 52;
-    const ph = 118 + OPTION_ROWS.length * rowH + 64;
+    const rowH = PS.clamp((L.H - 210) / OPTION_ROWS.length, 34, 52);
+    const ph = 100 + OPTION_ROWS.length * rowH + 56;
     const px = L.W / 2 - pw / 2;
     const py = Math.max(12, L.H / 2 - ph / 2);
 
@@ -1100,6 +1126,25 @@ PS.render = (function () {
       for (const a of st.attacks) drawAttack(a, now, L, st, fade);
       drawStickman(now, L, st);
 
+      if (st.ripple) {
+        const age = st.clock - st.ripple.born;
+        const r = 20 + age * 0.85;
+        const a = PS.clamp(1 - age / PS.SETTINGS.slowmoRippleMs, 0, 1);
+        ctx.globalAlpha = a * 0.5;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(st.ripple.x, st.ripple.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = a * 0.3;
+        ctx.strokeStyle = "#59c2ff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(st.ripple.x, st.ripple.y, r * 0.8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
       for (const p of st.particles) {
         ctx.globalAlpha = PS.clamp(p.life / p.maxLife, 0, 1);
         ctx.fillStyle = p.color;
@@ -1135,6 +1180,13 @@ PS.render = (function () {
           ctx.fillStyle = "rgba(255,0,0," + st.hitFlash.toFixed(3) + ")";
           ctx.fillRect(0, 0, L.W, L.H);
         }
+      }
+
+      if (st.screen === "playing" && now < st.slowmoUntil) {
+        const remain = (st.slowmoUntil - now) / PS.SETTINGS.slowmoMs;
+        ctx.strokeStyle = "rgba(89,194,255," + (0.35 * remain).toFixed(3) + ")";
+        ctx.lineWidth = 6;
+        ctx.strokeRect(3, 3, L.W - 6, L.H - 6);
       }
 
       if (st.screen === "gameover") drawGameOver(now, L, st);

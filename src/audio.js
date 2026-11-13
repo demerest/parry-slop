@@ -128,6 +128,11 @@ PS.audio = (function () {
     overflow() {
       tone(220, 0.5, "sawtooth", 0.05, 880);
       noise(0.4, 0.04, 1200);
+    },
+    slowmo() {
+      tone(1400, 0.34, "sine", 0.03, -1100);
+      tone(700, 0.4, "triangle", 0.02, -520, 0.02);
+      noise(0.3, 0.018, 420);
     }
   };
 

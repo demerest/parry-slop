@@ -63,6 +63,15 @@
         advance(2500);
         g.game.pause();
         advance(100);
+      } else if (scene === "slowmo") {
+        g.startRun();
+        advance(1000);
+        g.game.spawnAttack(PS.ATTACK_BY_ID.sword, { telegraph: 1100, y: PS.layout.H * 0.45 });
+        advance(1100);
+        g.press();
+        advance(140);
+        g.state.score = 5200;
+        g.state.combo = 17;
       } else if (scene === "boss") {
         g.startRun();
         g.state.nextBossAt = 0;

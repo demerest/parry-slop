@@ -10,7 +10,8 @@ PS.game = (function () {
     reducedShake: false,
     highContrast: false,
     flashSafe: false,
-    audioCues: false
+    audioCues: false,
+    slowMo: true
   };
 
   const state = {
@@ -38,8 +39,9 @@ PS.game = (function () {
     nextSpawnAt: 0,
     lastInputClock: -1e9,
     lockoutUntil: 0,
-    hitstopRequest: false,
-    hitstopUntil: 0,
+    slowmoRequest: false,
+    slowmoUntil: 0,
+    ripple: null,
     act: 1,
     banner: null,
     boss: null,
@@ -272,8 +274,9 @@ PS.game = (function () {
     state.hurtAnimUntil = -1;
     state.lastInputClock = -1e9;
     state.lockoutUntil = 0;
-    state.hitstopRequest = false;
-    state.hitstopUntil = 0;
+    state.slowmoRequest = false;
+    state.slowmoUntil = 0;
+    state.ripple = null;
     state.act = 1;
     state.banner = null;
     state.boss = null;
@@ -376,7 +379,11 @@ PS.game = (function () {
     state.parryAnimUntil = state.clock + 150;
     state.flash = state.options.flashSafe ? 0.08 : perfect ? 0.26 : 0.14;
     state.shake = state.options.reducedShake ? 2 : perfect ? 12 : 7;
-    if (perfect) state.hitstopRequest = true;
+    if (perfect && state.options.slowMo) {
+      state.slowmoRequest = true;
+      state.ripple = { x: stickmanX() + 80, y: attack.y, born: state.clock };
+      PS.audio.play("slowmo");
+    }
 
     const x = stickmanX() + 80;
     addParticles(x, attack.y, attack.color, perfect ? 26 : 16, perfect ? 8 : 6);
@@ -536,11 +543,15 @@ PS.game = (function () {
     state.lastNow = now;
 
     if (state.screen === "playing") {
-      if (state.hitstopRequest) {
-        state.hitstopUntil = now + S.hitstopMs;
-        state.hitstopRequest = false;
+      if (state.slowmoRequest) {
+        state.slowmoUntil = now + S.slowmoMs;
+        state.slowmoRequest = false;
       }
-      const scale = now < state.hitstopUntil ? S.hitstopScale : 1;
+      let scale = 1;
+      if (now < state.slowmoUntil) {
+        const remain = (state.slowmoUntil - now) / S.slowmoMs;
+        scale = 1 - (1 - S.slowmoScale) * Math.pow(remain, 1.6);
+      }
       state.clock += dt * scale;
 
       director();
@@ -556,8 +567,9 @@ PS.game = (function () {
 
       resolveMisses();
       state.attacks = state.attacks.filter((a) => !(a.resolved && state.clock > a.impactClock + 450));
+      if (state.ripple && state.clock - state.ripple.born > S.slowmoRippleMs) state.ripple = null;
       state.slop = Math.max(0, state.slop - S.slopDecayPerSecond * (dt / 1000));
-      updateEffects(dt);
+      updateEffects(dt * scale);
     } else if (state.screen === "gameover") {
       state.clock += dt;
       updateEffects(dt);

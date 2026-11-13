@@ -455,6 +455,59 @@
     assert(avg < 10, "avg frame ms too high: " + avg.toFixed(2));
   });
 
+  test("perfect parry triggers slow-motion dilation", function () {
+    fresh();
+    const a = firstAttack();
+    advanceToClock(a.impactClock);
+    g.press();
+    now += 16;
+    g.tick(now);
+    assert(state.slowmoUntil > 0, "slow-mo window not armed");
+    assert(state.ripple, "time ripple missing");
+    const c0 = state.clock;
+    advance(120);
+    const dilated = state.clock - c0;
+    assert(dilated < 120 * 0.6, "clock not dilated: " + dilated);
+    advance(600);
+    const c1 = state.clock;
+    advance(200);
+    const restored = state.clock - c1;
+    assert(Math.abs(restored - 200) < 12, "speed not restored: " + restored);
+  });
+
+  test("slow motion option disables dilation", function () {
+    g.game.setOption("slowMo", false);
+    fresh();
+    const a = firstAttack();
+    advanceToClock(a.impactClock);
+    g.press();
+    eq(state.stats.perfects, 1, "still a perfect parry");
+    eq(state.slowmoUntil, 0, "slow-mo should be off");
+    const c0 = state.clock;
+    advance(120);
+    const delta = state.clock - c0;
+    assert(Math.abs(delta - 120) < 10, "clock should run at full speed: " + delta);
+    g.game.setOption("slowMo", true);
+    assert(PS.render.OPTION_ROWS.some((r) => r.key === "slowMo"), "settings row missing");
+  });
+
+  test("screen controls stay inside the viewport", function () {
+    const screens = ["title", "settings", "gameover", "playing"];
+    for (const sc of screens) {
+      state.screen = sc;
+      if (sc === "gameover") state.overClock = state.clock - 1000;
+      now += 16;
+      g.tick(now);
+      for (const r of PS.render.regions) {
+        assert(
+          r.x >= 0 && r.y >= 0 && r.x + r.w <= PS.layout.W + 1 && r.y + r.h <= PS.layout.H + 1,
+          sc + " region out of bounds: " + r.id
+        );
+      }
+    }
+    state.screen = "title";
+  });
+
   test("no runtime errors", function () {
     eq(window.__errors.length, 0, "errors: " + window.__errors.join(" | "));
   });

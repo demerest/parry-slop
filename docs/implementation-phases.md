@@ -176,7 +176,7 @@ This phase is critical. The game is simple, so feedback must be strong.
 - [x] Stickman hurt animation
 - [x] Attack impact flash
 - [x] Timing ring around attacks
-- [x] Slow-motion micro-freeze on perfect parry, optional
+- [x] Slow-motion time dilation on perfect parry
 
 ### Audio feedback tasks
 

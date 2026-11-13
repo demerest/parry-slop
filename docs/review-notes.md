@@ -75,6 +75,18 @@ loaded in dependency order. No build step, works from `file://` and GitHub Pages
 - Favicon: inline SVG data URI, no external assets.
 - Hosting: GitHub Pages from `main` root (already configured on the repo).
 
+### 10. Perfect parry deserves real slow motion
+
+The original micro-freeze (90ms at 12% speed) was imperceptible. Replaced with a
+420ms time-dilation window: play-clock scale ramps from 22% back to 100% with a
+smooth ease-out, and particles/text age on the same scaled dt so the whole
+scene dilates cohesively. Visual language: expanding time ripple at the parry
+point, chromatic magenta/cyan blade ghosts, cool tint + slow time-streaks,
+cyan border pulse; audio: pitch-down whoosh under the perfect chime.
+Gated by a new PAR ASSIST toggle (`slowMo`, default on) for motion sensitivity.
+Fairness note: dilation stretches real-time windows, so chaining perfects is
+a reward, not a requirement — normal parries run at full speed.
+
 ## Phase status
 
 See the checkboxes in `implementation-phases.md` — updated as phases land.

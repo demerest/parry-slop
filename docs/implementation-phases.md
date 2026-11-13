@@ -1,5 +1,3 @@
-<!-- File: docs/implementation-phases.md -->
-
 # Parry Slop — Implementation Phases
 
 This document describes how to build **Parry Slop** from the current simple prototype into a complete, polished web game.
@@ -16,14 +14,14 @@ Goal: create a stable foundation for development.
 
 ### Tasks
 
-- [ ] Create repository
-- [ ] Create basic project structure
-- [ ] Add `README.md`
-- [ ] Add `docs/game-design-document.md`
-- [ ] Add current single-file prototype
-- [ ] Decide whether to keep single-file or modularize later
-- [ ] Test prototype on desktop browser
-- [ ] Test prototype on mobile browser
+- [x] Create repository
+- [x] Create basic project structure
+- [x] Add `README.md`
+- [x] Add `docs/game-design-document.md`
+- [x] Add current single-file prototype
+- [x] Decide whether to keep single-file or modularize later
+- [x] Test prototype on desktop browser
+- [x] Test prototype on mobile browser
 
 ### Suggested file structure
 
@@ -80,15 +78,15 @@ Goal: make the current prototype reliable and easy to expand.
 
 ### Tasks
 
-- [ ] Use a single consistent time source, such as `performance.now()`
-- [ ] Make attack spawning deterministic enough for testing
-- [ ] Separate update and draw logic cleanly
-- [ ] Store attack definitions in data form
-- [ ] Add simple constants for difficulty tuning
-- [ ] Add safe local storage helper
-- [ ] Prevent duplicate inputs from causing issues
-- [ ] Add restart delay after game over to avoid accidental restart
-- [ ] Add basic debug display for FPS or timing if needed
+- [x] Use a single consistent time source, such as `performance.now()`
+- [x] Make attack spawning deterministic enough for testing
+- [x] Separate update and draw logic cleanly
+- [x] Store attack definitions in data form
+- [x] Add simple constants for difficulty tuning
+- [x] Add safe local storage helper
+- [x] Prevent duplicate inputs from causing issues
+- [x] Add restart delay after game over to avoid accidental restart
+- [x] Add basic debug display for FPS or timing if needed
 
 ### Tunable values to extract
 
@@ -120,19 +118,19 @@ Goal: create the minimum version that proves the game is fun.
 
 ### Required features
 
-- [ ] Title screen
-- [ ] Playing state
-- [ ] Game over state
-- [ ] One-button parry input
-- [ ] Attack telegraphing
-- [ ] Parry window timing
-- [ ] Score
-- [ ] Combo
-- [ ] HP
-- [ ] At least 4 attack types
-- [ ] At least 1 weird attack type
-- [ ] Basic text feedback
-- [ ] Basic sound feedback
+- [x] Title screen
+- [x] Playing state
+- [x] Game over state
+- [x] One-button parry input
+- [x] Attack telegraphing
+- [x] Parry window timing
+- [x] Score
+- [x] Combo
+- [x] HP
+- [x] At least 4 attack types
+- [x] At least 1 weird attack type
+- [x] Basic text feedback
+- [x] Basic sound feedback
 
 ### Minimum attack set
 
@@ -169,26 +167,26 @@ This phase is critical. The game is simple, so feedback must be strong.
 
 ### Visual feedback tasks
 
-- [ ] Screen shake on parry and hit
-- [ ] White flash on perfect parry
-- [ ] Red flash on player hit
-- [ ] Floating combat text
-- [ ] Particles on parry
-- [ ] Stickman parry animation
-- [ ] Stickman hurt animation
-- [ ] Attack impact flash
-- [ ] Timing ring around attacks
-- [ ] Slow-motion micro-freeze on perfect parry, optional
+- [x] Screen shake on parry and hit
+- [x] White flash on perfect parry
+- [x] Red flash on player hit
+- [x] Floating combat text
+- [x] Particles on parry
+- [x] Stickman parry animation
+- [x] Stickman hurt animation
+- [x] Attack impact flash
+- [x] Timing ring around attacks
+- [x] Slow-motion micro-freeze on perfect parry, optional
 
 ### Audio feedback tasks
 
-- [ ] Normal parry sound
-- [ ] Perfect parry sound
-- [ ] Miss sound
-- [ ] Whiff sound
-- [ ] Weird attack sound
-- [ ] Game over sound
-- [ ] UI click sound
+- [x] Normal parry sound
+- [x] Perfect parry sound
+- [x] Miss sound
+- [x] Whiff sound
+- [x] Weird attack sound
+- [x] Game over sound
+- [x] UI click sound
 
 ### Feedback examples
 
@@ -392,14 +390,14 @@ Goal: make the game feel complete.
 
 ### Required screens
 
-- [ ] Title screen
-- [ ] Gameplay screen
-- [ ] Game over screen
+- [x] Title screen
+- [x] Gameplay screen
+- [x] Game over screen
 
 ### Optional screens
 
-- [ ] Settings screen
-- [ ] Accessibility options
+- [x] Settings screen
+- [x] Accessibility options
 - [ ] Credits
 - [ ] Help / how to play
 - [ ] Fake patch notes
@@ -407,20 +405,20 @@ Goal: make the game feel complete.
 
 ### HUD tasks
 
-- [ ] Score display
-- [ ] Best score display
-- [ ] Combo display
-- [ ] HP display
-- [ ] Slop Meter
-- [ ] Mute button, if audio becomes more complex
+- [x] Score display
+- [x] Best score display
+- [x] Combo display
+- [x] HP display
+- [x] Slop Meter
+- [x] Mute button, if audio becomes more complex
 
 ### Game over tasks
 
-- [ ] Show score
-- [ ] Show best score
-- [ ] Show random death message
-- [ ] Show restart prompt
-- [ ] Add restart delay to prevent accidental input
+- [x] Show score
+- [x] Show best score
+- [x] Show random death message
+- [x] Show restart prompt
+- [x] Add restart delay to prevent accidental input
 
 ### Example death messages
 
@@ -447,24 +445,24 @@ Goal: make the game more polished and playable for more people.
 
 ### Audio tasks
 
-- [ ] Create unified sound manager
-- [ ] Add master mute
-- [ ] Add sound effects for all core actions
-- [ ] Add randomized weird attack sounds
+- [x] Create unified sound manager
+- [x] Add master mute
+- [x] Add sound effects for all core actions
+- [x] Add randomized weird attack sounds
 - [ ] Add optional simple background loop
-- [ ] Ensure audio starts only after user gesture
-- [ ] Handle browsers blocking audio gracefully
+- [x] Ensure audio starts only after user gesture
+- [x] Handle browsers blocking audio gracefully
 
 ### Accessibility tasks
 
-- [ ] Add reduced screen shake option
-- [ ] Add larger parry window option
-- [ ] Add high contrast mode
-- [ ] Add colorblind-friendly attack shapes or labels
-- [ ] Add flash reduction
-- [ ] Add optional audio timing cues
-- [ ] Test touch targets on mobile
-- [ ] Ensure text remains readable at small screen sizes
+- [x] Add reduced screen shake option
+- [x] Add larger parry window option
+- [x] Add high contrast mode
+- [x] Add colorblind-friendly attack shapes or labels
+- [x] Add flash reduction
+- [x] Add optional audio timing cues
+- [x] Test touch targets on mobile
+- [x] Ensure text remains readable at small screen sizes
 
 ### Recommended settings menu
 

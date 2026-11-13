@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>parry-slop shot</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #101014; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script>
+    window.__PS_NO_LOOP = true;
+    try {
+      localStorage.clear();
+      localStorage.setItem("parrySlop.muted", "true");
+    } catch (e) {}
+  </script>
+  <script src="../src/core.js"></script>
+  <script src="../src/audio.js"></script>
+  <script src="../src/attacks.js"></script>
+  <script src="../src/game.js"></script>
+  <script src="../src/render.js"></script>
+  <script src="../src/main.js"></script>
+  <script>
+    (function () {
+      const g = window.__ps;
+      const scene = new URLSearchParams(location.search).get("scene") || "title";
+      let now = 1000;
+      function advance(ms, step) {
+        step = step || 16;
+        const target = now + ms;
+        while (now < target) {
+          now = Math.min(now + step, target);
+          g.tick(now);
+        }
+      }
+      g.setSeed(7);
+      if (scene === "play") {
+        g.startRun();
+        advance(1000);
+        g.game.spawnAttack(PS.ATTACK_BY_ID.sword, { telegraph: 1100, y: PS.layout.H * 0.42 });
+        g.game.spawnAttack(PS.ATTACK_BY_ID.insult, { telegraph: 1700, y: PS.layout.H * 0.55, label: "SKILL ISSUE" });
+        advance(820);
+        g.game.addParticles(PS.layout.stickmanX + 80, PS.layout.H * 0.42, "#ffd24d", 22, 7);
+        g.game.addText("PARRY!", PS.layout.stickmanX + 110, PS.layout.H * 0.36, 28, "#ffffff", 900);
+        g.state.combo = 12;
+        g.state.score = 2450;
+        g.state.slop = 0.45;
+      } else if (scene === "over") {
+        g.startRun();
+        g.state.score = 3780;
+        let guard = 0;
+        while (g.state.screen === "playing" && guard++ < 2000) advance(50);
+        advance(900);
+      } else if (scene === "settings") {
+        g.game.openSettings();
+        g.state.options.bigWindow = true;
+        advance(100);
+      } else if (scene === "pause") {
+        g.startRun();
+        advance(2500);
+        g.game.pause();
+        advance(100);
+      }
+      g.tick(now + 16);
+      document.title = "shot:" + scene;
+      if (new URLSearchParams(location.search).get("debug")) {
+        const c2 = document.getElementById("game").getContext("2d");
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const probe = (x, y) => {
+          const d = c2.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+          return d[0] + "," + d[1] + "," + d[2];
+        };
+        document.title = "W=" + PS.layout.W + " H=" + PS.layout.H + " dpr=" + dpr +
+          " mute=" + probe(PS.layout.W - 32, 32) +
+          " heart=" + probe(PS.layout.W - 30, 80) +
+          " score=" + probe(30, 20);
+      }
+      // headless screenshots need compositor frames; keep repainting the staged state
+      (function raf() {
+        PS.render.draw(now);
+        if (new URLSearchParams(location.search).get("debug")) {
+          const c2 = document.getElementById("game").getContext("2d");
+          c2.fillStyle = "#ffffff";
+          c2.font = "16px monospace";
+          c2.textAlign = "left";
+          c2.textBaseline = "alphabetic";
+          c2.fillText("inner W=" + PS.layout.W + " H=" + PS.layout.H, 10, PS.layout.H - 50);
+        }
+        requestAnimationFrame(raf);
+      })();
+    })();
+  </script>
+</body>
+</html>

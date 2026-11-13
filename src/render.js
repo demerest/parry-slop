@@ -887,6 +887,7 @@ PS.render = (function () {
     ctx.globalAlpha = pulse;
     outlinedText("CLICK / TAP / SPACE", cx, L.H * 0.56, 26 * L.u, "#ffd24d");
     ctx.globalAlpha = 1;
+    outlinedText("parry when the ring closes around the attack", cx, L.H * 0.605, Math.min(14 * L.u, L.W / 30), "rgba(255,255,255,0.55)");
 
     if (L.W < 700) {
       outlinedText("parry swords, bullets, pop-ups,", cx, L.H * 0.64, Math.min(15 * L.u, L.W / 26), "rgba(255,255,255,0.6)");
@@ -1138,6 +1139,11 @@ PS.render = (function () {
 
       if (st.screen === "gameover") drawGameOver(now, L, st);
       if (st.screen === "paused") drawPaused(now, L, st);
+    }
+
+    if (st.fade > 0.01) {
+      ctx.fillStyle = "rgba(0,0,0," + (st.fade * 0.85).toFixed(3) + ")";
+      ctx.fillRect(0, 0, L.W, L.H);
     }
 
     ctx.restore();

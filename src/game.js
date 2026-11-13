@@ -29,6 +29,7 @@ PS.game = (function () {
     shake: 0,
     flash: 0,
     hitFlash: 0,
+    fade: 0,
     parryAnimUntil: -1,
     hurtAnimUntil: -1,
     overClock: 0,
@@ -266,6 +267,7 @@ PS.game = (function () {
     state.shake = 0;
     state.flash = 0;
     state.hitFlash = 0;
+    state.fade = 1;
     state.parryAnimUntil = -1;
     state.hurtAnimUntil = -1;
     state.lastInputClock = -1e9;
@@ -526,6 +528,7 @@ PS.game = (function () {
     state.shake *= Math.pow(0.86, step);
     state.flash *= Math.pow(0.85, step);
     state.hitFlash *= Math.pow(0.88, step);
+    state.fade = Math.max(0, state.fade - dt / 400);
   }
 
   function update(now) {

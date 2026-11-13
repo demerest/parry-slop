@@ -78,3 +78,18 @@ loaded in dependency order. No build step, works from `file://` and GitHub Pages
 ## Phase status
 
 See the checkboxes in `implementation-phases.md` — updated as phases land.
+
+## Verification limits
+
+- Automated tests run in headless Chrome (`tests/run-tests.ps1`): 32 assertions
+  covering timing, scoring, combos, whiff lockout, restart, pause, acts, patterns,
+  multi-hit, fakes, bosses, slop overflow, determinism, and a frame-budget smoke
+  test (update+draw averaged over 300 frames).
+- Screenshots verified at 1280x800 and 500x900 (headless Chrome clamps viewports
+  below 500px wide, so narrow-layout checks use 500px).
+- NOT verified on real devices: mobile Safari, Android Chrome, desktop Firefox,
+  low-end hardware. Those Phase 9 boxes stay unchecked on purpose.
+- Object pooling for particles/texts was deemed unnecessary at the 280-particle
+  cap; the cap plus splice-based aging keeps frame cost flat.
+- Impact spacing: spawns and multi-hit re-arms are pushed apart to >=160ms so no
+  chain can demand inputs faster than the 110ms cooldown (fairness, GDD §12.1).

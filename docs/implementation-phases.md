@@ -490,17 +490,17 @@ Goal: make the game feel like a finished meme product.
 
 ### Polish tasks
 
-- [ ] Add title screen animation
-- [ ] Add idle stickman animation
-- [ ] Add background variation based on Slop Meter
-- [ ] Add fake browser-like joke UI
-- [ ] Add secret rare attacks
-- [ ] Add milestone taunts
-- [ ] Add screen transitions
-- [ ] Add death animation
-- [ ] Add perfect parry freeze frame
-- [ ] Add combo-based background intensity
-- [ ] Add shareable score text
+- [x] Add title screen animation
+- [x] Add idle stickman animation
+- [x] Add background variation based on Slop Meter
+- [x] Add fake browser-like joke UI
+- [x] Add secret rare attacks
+- [x] Add milestone taunts
+- [x] Add screen transitions
+- [x] Add death animation
+- [x] Add perfect parry freeze frame
+- [x] Add combo-based background intensity
+- [x] Add shareable score text
 
 ### Example share text
 
@@ -511,11 +511,11 @@ I am legally unstoppable.
 
 ### Secret ideas
 
-- Parry the title logo
-- Parry the mute button
-- Parry the game over screen
-- Parry 999 things to unlock fake ending
-- Let the Slop Meter max out to trigger weird mode
+- [x] Parry the title logo
+- [ ] Parry the mute button
+- [x] Parry the game over screen
+- [ ] Parry 999 things to unlock fake ending
+- [x] Let the Slop Meter max out to trigger weird mode
 
 ### Acceptance criteria
 
@@ -532,25 +532,25 @@ Goal: make the game run smoothly everywhere.
 
 ### Performance tasks
 
-- [ ] Limit particle count
+- [x] Limit particle count
 - [ ] Reuse text/particle objects if needed
-- [ ] Avoid layout thrashing
-- [ ] Use Canvas only, not DOM animation, for gameplay
+- [x] Avoid layout thrashing
+- [x] Use Canvas only, not DOM animation, for gameplay
 - [ ] Test low-end device performance
 - [ ] Test mobile Safari
 - [ ] Test Android Chrome
 - [ ] Test desktop Firefox
-- [ ] Test desktop Chrome
-- [ ] Test resizing and orientation changes
+- [x] Test desktop Chrome
+- [x] Test resizing and orientation changes
 
 ### Compatibility tasks
 
-- [ ] Handle `AudioContext` unavailable
-- [ ] Handle `localStorage` unavailable
-- [ ] Handle pointer events safely
-- [ ] Prevent touch scrolling during play
-- [ ] Prevent double-tap zoom
-- [ ] Handle visibility change by pausing or muting
+- [x] Handle `AudioContext` unavailable
+- [x] Handle `localStorage` unavailable
+- [x] Handle pointer events safely
+- [x] Prevent touch scrolling during play
+- [x] Prevent double-tap zoom
+- [x] Handle visibility change by pausing or muting
 
 ### Acceptance criteria
 

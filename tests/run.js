@@ -443,6 +443,18 @@
     assert(state.banner && state.banner.title === "CREDITS", "fake credits banner");
   });
 
+  test("frame budget: update+draw stays cheap", function () {
+    fresh();
+    advance(4000, 50);
+    const t0 = performance.now();
+    for (let i = 0; i < 300; i++) {
+      now += 16;
+      g.tick(now);
+    }
+    const avg = (performance.now() - t0) / 300;
+    assert(avg < 10, "avg frame ms too high: " + avg.toFixed(2));
+  });
+
   test("no runtime errors", function () {
     eq(window.__errors.length, 0, "errors: " + window.__errors.join(" | "));
   });

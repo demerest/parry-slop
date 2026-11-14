@@ -87,6 +87,22 @@ Gated by a new PAR ASSIST toggle (`slowMo`, default on) for motion sensitivity.
 Fairness note: dilation stretches real-time windows, so chaining perfects is
 a reward, not a requirement — normal parries run at full speed.
 
+### 11. Overflow banner layering + SLOP STORM
+
+Two fixes from play feedback:
+
+- Name cards (act/boss/overflow) rendered above the attack layer and could hide
+  incoming objects on short viewports. Banners now draw immediately after the
+  background, behind every world object; verified in screenshots at 1280x800
+  and 500x900 with attacks crossing the card.
+- Overflow was only a tint + tag. It is now an 8s SLOP STORM: trigger shockwave
+  + flash + shake + time dilation, then an energy barrier at
+  `stickmanX + 150*s` auto-destroys any attack that touches it (full hit credit,
+  combo, weird bonus, zap rings/particles/sound, boss damage included). Fakes
+  are vaporized too, with a joke. A live countdown replaces the WEIRD MODE tag;
+  storm end rolls SLOP CONTAINED and restores manual parrying. Auto-destroys
+  add only 0.02 slop per hit so storms cannot self-sustain indefinitely.
+
 ## Phase status
 
 See the checkboxes in `implementation-phases.md` — updated as phases land.

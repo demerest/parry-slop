@@ -47,8 +47,13 @@ unavailable).
 ### The Slop Meter
 
 Parrying nonsense fills the Slop Meter; it drains over time. Max it out and
-**SLOP OVERFLOW** triggers: eight seconds of glitched background where every
-parry counts as weird.
+**SLOP OVERFLOW** triggers a **SLOP STORM**: a shockwave bursts from the stickman,
+time dilates, and for eight seconds an energy barrier in front of him
+auto-vaporizes every incoming attack — explosions, zap rings, score and combo
+credit, no input needed. Every parry (manual or auto) counts as weird during the
+storm. A countdown beside the meter shows time left; when it ends, **SLOP
+CONTAINED** returns you to manual parrying. Banners render behind attacks, so
+the warning never hides what is coming at you.
 
 ### Progression
 

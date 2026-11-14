@@ -631,6 +631,40 @@ PS.render = (function () {
     return 36;
   }
 
+  function drawStormField(now, L, st) {
+    if (!st.stormActive) return;
+    const inA = PS.clamp((st.clock - st.stormStart) / 300, 0, 1);
+    const outA = PS.clamp((st.weirdUntil - st.clock) / 400, 0, 1);
+    const a = Math.min(inA, outA);
+    if (a <= 0) return;
+    const x = L.stickmanX + PS.SETTINGS.stormFieldOffset * L.s;
+    const top = L.groundY - 260 * L.s;
+    const bot = L.groundY + 52 * L.s;
+    const grad = ctx.createLinearGradient(x - 26, 0, x + 26, 0);
+    grad.addColorStop(0, "rgba(255,77,255,0)");
+    grad.addColorStop(0.5, "rgba(255,77,255," + (0.22 * a).toFixed(3) + ")");
+    grad.addColorStop(1, "rgba(89,194,255,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(x - 26, top, 52, bot - top);
+    ctx.strokeStyle = "rgba(255,77,255," + (0.75 * a).toFixed(3) + ")";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bot);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(89,194,255," + (0.5 * a).toFixed(3) + ")";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 6, top);
+    ctx.lineTo(x + 6, bot);
+    ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      const y = bot - ((now * 0.12 + i * 97) % (bot - top));
+      ctx.fillStyle = "rgba(255,255,255," + (0.35 * a).toFixed(3) + ")";
+      ctx.fillRect(x - 3 + Math.sin(now / 90 + i) * 4, y, 3, 8);
+    }
+  }
+
   function drawAttack(a, now, L, st, fade) {
     fade = fade === undefined ? 1 : fade;
     const pos = attackPos(a, st.clock, L);
@@ -830,10 +864,13 @@ PS.render = (function () {
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
     ctx.lineWidth = 1;
     ctx.strokeRect(mx, my, mw, 14);
-    if (st.clock < st.weirdUntil) {
+    if (st.stormActive) {
       ctx.font = font(12 * u);
       ctx.fillStyle = "#ff4dff";
-      ctx.fillText("WEIRD MODE", mx + mw + 10, my);
+      ctx.fillText(
+        "SLOP STORM " + Math.max(0, (st.weirdUntil - st.clock) / 1000).toFixed(1) + "s",
+        mx + mw + 10, my
+      );
     }
 
     drawMuteButton(L);
@@ -1117,6 +1154,8 @@ PS.render = (function () {
     }
 
     drawBackground(now, L, st);
+    drawBanner(L, st);
+    drawStormField(now, L, st);
 
     if (st.screen === "title" || st.screen === "settings") {
       drawTitle(now, L, st);
@@ -1145,6 +1184,44 @@ PS.render = (function () {
         ctx.globalAlpha = 1;
       }
 
+      if (st.shock) {
+        const age = st.clock - st.shock.born;
+        const r = 30 + age * 3;
+        const al = PS.clamp(1 - age / 900, 0, 1);
+        ctx.globalAlpha = al * 0.6;
+        ctx.strokeStyle = "#ff4dff";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(st.shock.x, st.shock.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = al * 0.35;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(st.shock.x, st.shock.y, r * 0.86, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      for (const z of st.zaps) {
+        const age = st.clock - z.born;
+        const r = 12 + age * 0.6;
+        const al = PS.clamp(1 - age / 420, 0, 1);
+        ctx.globalAlpha = al * 0.7;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(z.x, z.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = al * 0.45;
+        ctx.strokeStyle = z.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(z.x, z.y, r * 1.35, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
       for (const p of st.particles) {
         ctx.globalAlpha = PS.clamp(p.life / p.maxLife, 0, 1);
         ctx.fillStyle = p.color;
@@ -1159,7 +1236,6 @@ PS.render = (function () {
       ctx.globalAlpha = 1;
 
       drawHUD(now, L, st);
-      drawBanner(L, st);
 
       if (st.flash > 0.01) {
         if (st.options.flashSafe) {

@@ -126,8 +126,21 @@ PS.audio = (function () {
       tone(1319, 0.1, "triangle", 0.04, 0, 0.06);
     },
     overflow() {
+      tone(60, 0.6, "sine", 0.09, -20);
       tone(220, 0.5, "sawtooth", 0.05, 880);
-      noise(0.4, 0.04, 1200);
+      noise(0.5, 0.06, 900);
+      tone(440, 0.12, "square", 0.04, 0, 0.1);
+      tone(660, 0.12, "square", 0.04, 0, 0.22);
+      tone(880, 0.2, "square", 0.05, 0, 0.34);
+    },
+    zap() {
+      const f = 500 + PS.rng() * 900;
+      tone(f, 0.09, "square", 0.05, -f * 0.6);
+      noise(0.08, 0.04, 2000 + PS.rng() * 1500);
+    },
+    contain() {
+      tone(880, 0.12, "triangle", 0.04, -200);
+      tone(440, 0.2, "triangle", 0.04, -100, 0.12);
     },
     slowmo() {
       tone(1400, 0.34, "sine", 0.03, -1100);

@@ -42,6 +42,10 @@ PS.game = (function () {
     slowmoRequest: false,
     slowmoUntil: 0,
     ripple: null,
+    stormActive: false,
+    stormStart: -1,
+    zaps: [],
+    shock: null,
     act: 1,
     banner: null,
     boss: null,
@@ -277,6 +281,10 @@ PS.game = (function () {
     state.slowmoRequest = false;
     state.slowmoUntil = 0;
     state.ripple = null;
+    state.stormActive = false;
+    state.stormStart = -1;
+    state.zaps.length = 0;
+    state.shock = null;
     state.act = 1;
     state.banner = null;
     state.boss = null;
@@ -370,10 +378,11 @@ PS.game = (function () {
       0, 1
     );
     if (state.slop >= 1 && state.clock >= state.weirdUntil) {
-      state.weirdUntil = state.clock + 8000;
+      state.weirdUntil = state.clock + S.stormMs;
+      state.stormStart = state.clock;
+      state.stormActive = true;
       state.slop = 0.55;
-      setBanner("SLOP OVERFLOW", "everything is weird now", 1600, "#ff4dff");
-      PS.audio.play("overflow");
+      setBanner("SLOP OVERFLOW", "THE GAME PARRIES FOR YOU", 1600, "#ff4dff");
     }
 
     state.parryAnimUntil = state.clock + 150;
@@ -383,6 +392,13 @@ PS.game = (function () {
       state.slowmoRequest = true;
       state.ripple = { x: stickmanX() + 80, y: attack.y, born: state.clock };
       PS.audio.play("slowmo");
+    }
+    if (state.stormActive && state.stormStart === state.clock) {
+      state.flash = state.options.flashSafe ? 0.12 : 0.5;
+      state.shake = state.options.reducedShake ? 5 : 24;
+      state.slowmoRequest = true;
+      state.shock = { x: stickmanX(), y: (PS.layout ? PS.layout.groundY : 430) - 60, born: state.clock };
+      PS.audio.play("overflow");
     }
 
     const x = stickmanX() + 80;
@@ -418,6 +434,38 @@ PS.game = (function () {
     addParticles(layout.W * 0.5, layout.H * 0.4, "#7dff7d", 40, 9);
     state.boss = null;
     PS.audio.play("bossDown");
+  }
+
+  function autoDestroy(attack, pos) {
+    attack.resolved = true;
+    attack.success = true;
+    const hits = attack.hitsLeft;
+    state.combo += hits;
+    state.maxCombo = Math.max(state.maxCombo, state.combo);
+    state.stats.parries += hits;
+    if (attack.weird) state.stats.weirds += hits;
+    const gain = hits * (S.baseScore + S.weirdBonus) + state.combo * S.comboScoreStep;
+    state.score += gain;
+    state.slop = PS.clamp(state.slop + S.stormSlopPerHit * hits, 0, 1);
+    state.shake = Math.max(state.shake, state.options.reducedShake ? 2 : 6);
+    state.zaps.push({ x: pos.x, y: pos.y, born: state.clock, color: attack.color });
+    if (state.zaps.length > 12) state.zaps.shift();
+    addParticles(pos.x, pos.y, attack.color, 30, 9);
+    addParticles(pos.x, pos.y, "#ffffff", 10, 6);
+    addText(
+      attack.fake ? "IT WAS FINE. NOW IT IS NOT." : PS.pick(["VAPORIZED", "AUTO-PARRIED", "SLOP INCINERATED", "DELETE."]),
+      pos.x, pos.y - 46, 22, "#ff4dff", 700
+    );
+    addText(attack.label + " +" + PS.fmt(gain), pos.x, pos.y - 78, 15, "#ffffff", 600);
+    if (state.boss && attack.boss) {
+      state.boss.hp -= hits;
+      if (state.boss.hp <= 0) defeatBoss();
+    }
+    if (state.stats.parries === 100) {
+      setBanner("CREDITS", "thanks for parrying. there is no ending.", 2200, "#ffffff");
+    }
+    milestoneCheck();
+    PS.audio.play("zap");
   }
 
   function whiff(attack) {
@@ -556,6 +604,22 @@ PS.game = (function () {
 
       director();
 
+      if (state.stormActive) {
+        if (state.clock >= state.weirdUntil) {
+          state.stormActive = false;
+          setBanner("SLOP CONTAINED", "back to manual parrying", 1500, "#7dff7d");
+          PS.audio.play("contain");
+        } else if (state.clock >= state.stormStart + S.stormArmMs) {
+          const L = PS.layout || { W: 800, H: 600, s: 1, stickmanX: 200, groundY: 430 };
+          const fieldX = stickmanX() + S.stormFieldOffset * L.s;
+          for (const a of state.attacks) {
+            if (a.resolved) continue;
+            const pos = PS.render.attackPos(a, state.clock, L);
+            if (pos.x <= fieldX) autoDestroy(a, pos);
+          }
+        }
+      }
+
       if (state.options.audioCues) {
         for (const attack of state.attacks) {
           if (!attack.resolved && !attack.cued && state.clock >= attack.impactClock - attack.window) {
@@ -567,6 +631,8 @@ PS.game = (function () {
 
       resolveMisses();
       state.attacks = state.attacks.filter((a) => !(a.resolved && state.clock > a.impactClock + 450));
+      state.zaps = state.zaps.filter((z) => state.clock - z.born < 420);
+      if (state.shock && state.clock - state.shock.born > 900) state.shock = null;
       if (state.ripple && state.clock - state.ripple.born > S.slowmoRippleMs) state.ripple = null;
       state.slop = Math.max(0, state.slop - S.slopDecayPerSecond * (dt / 1000));
       updateEffects(dt * scale);

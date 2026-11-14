@@ -72,6 +72,18 @@
         advance(140);
         g.state.score = 5200;
         g.state.combo = 17;
+      } else if (scene === "storm") {
+        g.startRun();
+        advance(1000);
+        g.game.spawnAttack(PS.ATTACK_BY_ID.sword, { telegraph: 1100, y: PS.layout.H * 0.45 });
+        advance(1100);
+        g.state.slop = 0.99;
+        g.press();
+        g.game.spawnAttack(PS.ATTACK_BY_ID.insult, { telegraph: 1500, y: PS.layout.H * 0.3, label: "SKILL ISSUE" });
+        g.game.spawnAttack(PS.ATTACK_BY_ID.piano, { telegraph: 1700, y: PS.layout.H * 0.5 });
+        advance(800);
+        g.state.score = 9400;
+        g.state.combo = 26;
       } else if (scene === "boss") {
         g.startRun();
         g.state.nextBossAt = 0;

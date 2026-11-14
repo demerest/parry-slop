@@ -508,6 +508,54 @@
     state.screen = "title";
   });
 
+  test("slop overflow starts storm with shockwave", function () {
+    fresh();
+    const a = firstAttack();
+    state.slop = 0.99;
+    advanceToClock(a.impactClock);
+    g.press();
+    assert(state.stormActive, "storm not active");
+    assert(state.shock, "shockwave missing");
+    assert(state.banner && state.banner.title === "SLOP OVERFLOW", "overflow banner");
+    assert(state.banner.sub === "THE GAME PARRIES FOR YOU", "storm subtitle");
+  });
+
+  test("storm auto-destroys incoming attacks without input", function () {
+    fresh();
+    const a = firstAttack();
+    state.nextSpawnAt = 1e9;
+    state.slop = 0.99;
+    advanceToClock(a.impactClock);
+    g.press();
+    const scoreBefore = state.score;
+    const parriesBefore = state.stats.parries;
+    const b = g.game.spawnAttack(PS.ATTACK_BY_ID.sword, { telegraph: 1200 });
+    advanceToClock(b.spawnClock + 1200);
+    assert(b.resolved && b.success, "attack not auto-destroyed");
+    eq(state.hp, 3, "storm must not cost HP");
+    assert(state.score > scoreBefore, "no score from auto-destroy");
+    assert(state.stats.parries > parriesBefore, "no parry credit");
+    assert(state.combo >= 2, "combo should build during storm");
+  });
+
+  test("storm ends and returns to manual parrying", function () {
+    fresh();
+    const a = firstAttack();
+    state.nextSpawnAt = 1e9;
+    state.slop = 0.99;
+    advanceToClock(a.impactClock);
+    g.press();
+    advanceToClock(state.weirdUntil + 50);
+    assert(!state.stormActive, "storm should end");
+    assert(state.banner && state.banner.title === "SLOP CONTAINED", "contain banner");
+    state.attacks.length = 0;
+    state.nextSpawnAt = 1e9;
+    const b = g.game.spawnAttack(PS.ATTACK_BY_ID.sword, { telegraph: 1000 });
+    advanceToClock(b.impactClock + b.window + 60);
+    assert(b.resolved && !b.success, "after storm, misses hurt again");
+    eq(state.hp, 2, "hp loss after storm");
+  });
+
   test("no runtime errors", function () {
     eq(window.__errors.length, 0, "errors: " + window.__errors.join(" | "));
   });

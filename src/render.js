@@ -84,7 +84,7 @@ PS.render = (function () {
       else p = 0.55 + ((t - 0.75) / 0.25) * 0.45;
       x = PS.lerp(startX, targetX, PS.clamp(p, 0, 1));
     } else if (a.behavior === "lobbed") {
-      const startY = a.y - L.H * 0.42;
+      const startY = Math.max(a.y - L.H * 0.42, 150);
       y = PS.lerp(startY, a.y, Math.min(t, 1)) - Math.sin(Math.PI * Math.min(t, 1)) * 36;
     } else if (a.behavior === "wobble") {
       y += Math.sin(t * 9 + a.spin) * 20;
@@ -631,38 +631,114 @@ PS.render = (function () {
     return 36;
   }
 
-  function drawStormField(now, L, st) {
+  function drawBolt(b, st, mul) {
+    const age = st.clock - b.born;
+    const life = b.ambient ? 260 : 320;
+    if (age > life) return;
+    const a = (1 - age / life) * mul;
+    const flick = 0.7 + 0.3 * Math.sin(age * 0.9 + b.seed);
+    ctx.save();
+    ctx.globalAlpha = a * flick;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 3;
+    ctx.shadowColor = b.color || "#ff4dff";
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    const segs = 9;
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const edge = i === 0 || i === segs;
+      const x = PS.lerp(b.x1, b.x2, t) + (edge ? 0 : Math.sin(b.seed * 7 + i * 13.7) * 26 * (1 - t * 0.4));
+      const y = PS.lerp(b.y1, b.y2, t) + (edge ? 0 : Math.cos(b.seed * 5 + i * 9.1) * 10);
+      if (i) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = a * flick * 0.5;
+    ctx.strokeStyle = b.color || "#ff4dff";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawStormBack(now, L, st) {
     if (!st.stormActive) return;
-    const inA = PS.clamp((st.clock - st.stormStart) / 300, 0, 1);
-    const outA = PS.clamp((st.weirdUntil - st.clock) / 400, 0, 1);
+    const inA = PS.clamp((st.clock - st.stormStart) / 400, 0, 1);
+    const outA = PS.clamp((st.weirdUntil - st.clock) / 500, 0, 1);
     const a = Math.min(inA, outA);
     if (a <= 0) return;
-    const x = L.stickmanX + PS.SETTINGS.stormFieldOffset * L.s;
-    const top = L.groundY - 260 * L.s;
-    const bot = L.groundY + 52 * L.s;
-    const grad = ctx.createLinearGradient(x - 26, 0, x + 26, 0);
-    grad.addColorStop(0, "rgba(255,77,255,0)");
-    grad.addColorStop(0.5, "rgba(255,77,255," + (0.22 * a).toFixed(3) + ")");
-    grad.addColorStop(1, "rgba(89,194,255,0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(x - 26, top, 52, bot - top);
-    ctx.strokeStyle = "rgba(255,77,255," + (0.75 * a).toFixed(3) + ")";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(x, top);
-    ctx.lineTo(x, bot);
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(89,194,255," + (0.5 * a).toFixed(3) + ")";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x + 6, top);
-    ctx.lineTo(x + 6, bot);
-    ctx.stroke();
-    for (let i = 0; i < 6; i++) {
-      const y = bot - ((now * 0.12 + i * 97) % (bot - top));
-      ctx.fillStyle = "rgba(255,255,255," + (0.35 * a).toFixed(3) + ")";
-      ctx.fillRect(x - 3 + Math.sin(now / 90 + i) * 4, y, 3, 8);
+    const charge = st.stormCharge;
+
+    ctx.save();
+    ctx.globalAlpha = a;
+    for (let layer = 0; layer < 2; layer++) {
+      ctx.fillStyle = layer ? "rgba(30,10,40,0.55)" : "rgba(18,6,28,0.7)";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(L.W, 0);
+      ctx.lineTo(L.W, 40 + layer * 26);
+      for (let x = L.W; x >= 0; x -= 40) {
+        const y = 40 + layer * 26 +
+          Math.sin(x * 0.013 + now * 0.0016 * (layer + 1)) * 14 +
+          Math.sin(x * 0.031 - now * 0.001) * 8;
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
     }
+    ctx.fillStyle = "rgba(255,77,255," + ((0.1 + 0.05 * Math.sin(now / 120)) * a).toFixed(3) + ")";
+    ctx.fillRect(0, 0, L.W, 70);
+
+    const n = Math.min(90, 34 + charge * 5);
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < n; i++) {
+      const speed = 0.9 + (i % 5) * 0.12;
+      const y = ((now * speed * 0.9 + i * 173) % (L.H + 80)) - 40;
+      const x = ((i * 211 + now * 0.25 * speed) % (L.W + 80)) - 40;
+      const col = i % 3 === 0 ? "rgba(255,77,255," : i % 3 === 1 ? "rgba(89,194,255," : "rgba(140,255,77,";
+      ctx.strokeStyle = col + ((0.1 + 0.1 * ((i % 4) / 3)) * a).toFixed(3) + ")";
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - 10, y + 26);
+      ctx.stroke();
+    }
+
+    for (const b of st.bolts) {
+      if (b.ambient) drawBolt(b, st, a * 0.5);
+    }
+
+    const cx = L.stickmanX;
+    const cy = L.groundY - 60 * L.s;
+    const spin = now * 0.004 * (1 + charge * 0.06);
+    for (let r = 0; r < 3; r++) {
+      const rad = (46 + r * 26) * L.s;
+      const ang = spin * (r % 2 ? -1 : 1) + r;
+      ctx.strokeStyle = r === 1 ? "rgba(89,194,255," + (0.5 * a).toFixed(3) + ")" : "rgba(255,77,255," + (0.45 * a).toFixed(3) + ")";
+      ctx.lineWidth = 3 - r * 0.7;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, ang, ang + 4.2);
+      ctx.stroke();
+    }
+    const shards = 8 + charge;
+    for (let i = 0; i < shards; i++) {
+      const ang = spin * 1.6 + i * (Math.PI * 2 / shards);
+      const rad = (60 + (i % 3) * 24) * L.s;
+      const x = cx + Math.cos(ang) * rad;
+      const y = cy + Math.sin(ang) * rad * 0.6;
+      ctx.fillStyle = i % 2 ? "rgba(255,255,255," + (0.5 * a).toFixed(3) + ")" : "rgba(255,210,77," + (0.5 * a).toFixed(3) + ")";
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang * 2);
+      ctx.beginPath();
+      ctx.moveTo(0, -4);
+      ctx.lineTo(3, 3);
+      ctx.lineTo(-3, 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   function drawAttack(a, now, L, st, fade) {
@@ -871,6 +947,10 @@ PS.render = (function () {
         "SLOP STORM " + Math.max(0, (st.weirdUntil - st.clock) / 1000).toFixed(1) + "s",
         mx + mw + 10, my
       );
+      for (let i = 0; i < st.stormCharge; i++) {
+        ctx.fillStyle = i % 2 ? "#59c2ff" : "#ff4dff";
+        ctx.fillRect(mx + mw + 10 + i * 6, my + 18, 4, 6);
+      }
     }
 
     drawMuteButton(L);
@@ -1155,7 +1235,7 @@ PS.render = (function () {
 
     drawBackground(now, L, st);
     drawBanner(L, st);
-    drawStormField(now, L, st);
+    drawStormBack(now, L, st);
 
     if (st.screen === "title" || st.screen === "settings") {
       drawTitle(now, L, st);
@@ -1180,6 +1260,23 @@ PS.render = (function () {
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(st.ripple.x, st.ripple.y, r * 0.8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      for (const b of st.bolts) {
+        if (!b.ambient) drawBolt(b, st, 1);
+      }
+
+      if (st.implode) {
+        const age = st.clock - st.implode.born;
+        const r = Math.max(4, 300 * (1 - age / 500));
+        const al = PS.clamp(1 - age / 500, 0, 1);
+        ctx.globalAlpha = al * 0.6;
+        ctx.strokeStyle = "#7dff7d";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(L.stickmanX, L.groundY - 60 * L.s, r, 0, Math.PI * 2);
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
@@ -1225,7 +1322,20 @@ PS.render = (function () {
       for (const p of st.particles) {
         ctx.globalAlpha = PS.clamp(p.life / p.maxLife, 0, 1);
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        if (p.shape === "shard") {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(Math.atan2(p.vy, p.vx));
+          ctx.beginPath();
+          ctx.moveTo(p.size * 1.6, 0);
+          ctx.lineTo(-p.size, p.size * 0.8);
+          ctx.lineTo(-p.size, -p.size * 0.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        }
       }
       ctx.globalAlpha = 1;
 
@@ -1254,6 +1364,17 @@ PS.render = (function () {
           ctx.strokeRect(6, 6, L.W - 12, L.H - 12);
         } else {
           ctx.fillStyle = "rgba(255,0,0," + st.hitFlash.toFixed(3) + ")";
+          ctx.fillRect(0, 0, L.W, L.H);
+        }
+      }
+
+      if (st.stormFlash > 0.02) {
+        if (st.options.flashSafe) {
+          ctx.strokeStyle = "rgba(89,194,255," + Math.min(st.stormFlash, 0.4).toFixed(3) + ")";
+          ctx.lineWidth = 8;
+          ctx.strokeRect(4, 4, L.W - 8, L.H - 8);
+        } else {
+          ctx.fillStyle = "rgba(200,220,255," + (st.stormFlash * 0.18).toFixed(3) + ")";
           ctx.fillRect(0, 0, L.W, L.H);
         }
       }

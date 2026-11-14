@@ -133,10 +133,39 @@ PS.audio = (function () {
       tone(660, 0.12, "square", 0.04, 0, 0.22);
       tone(880, 0.2, "square", 0.05, 0, 0.34);
     },
-    zap() {
-      const f = 500 + PS.rng() * 900;
-      tone(f, 0.09, "square", 0.05, -f * 0.6);
-      noise(0.08, 0.04, 2000 + PS.rng() * 1500);
+    thunder() {
+      noise(0.5, 0.07, 220);
+      tone(50, 0.5, "sine", 0.08, -18);
+      noise(0.08, 0.05, 2400);
+    },
+    rumble() {
+      noise(0.35, 0.03, 140);
+      tone(44, 0.35, "sine", 0.04, -10);
+    },
+    stormHit(o) {
+      o = o || {};
+      const p = 1 + Math.min(o.combo || 0, 40) * 0.012;
+      const cat = o.cat || "normal";
+      if (cat === "emotional") {
+        tone(520 * p, 0.16, "triangle", 0.05, -260);
+        tone(300 * p, 0.2, "sine", 0.04, 180, 0.05);
+        noise(0.1, 0.02, 700);
+      } else if (cat === "internet" || cat === "responsibility") {
+        for (let i = 0; i < 4; i++) tone((900 - i * 160) * p, 0.05, "square", 0.04, -80, i * 0.045);
+        noise(0.12, 0.035, 2600);
+      } else if (cat === "meta" || cat === "concept") {
+        tone(440 * p, 0.12, "square", 0.045, 0);
+        tone(466 * p, 0.12, "square", 0.045, 0);
+        noise(0.1, 0.03, 1500);
+      } else if (cat === "fake") {
+        tone(300 * p, 0.09, "sine", 0.05, 500);
+        tone(900 * p, 0.07, "sine", 0.03, 300, 0.06);
+      } else {
+        tone(95 * p, 0.18, "sine", 0.08, -50);
+        tone(700 * p, 0.07, "square", 0.04, -300);
+        noise(0.12, 0.05, 1800);
+      }
+      noise(0.06, 0.03, 3200);
     },
     contain() {
       tone(880, 0.12, "triangle", 0.04, -200);
@@ -151,13 +180,13 @@ PS.audio = (function () {
 
   return {
     ensure,
-    play(name) {
+    play(name, arg) {
       if (muted) return;
       if (!ensure()) return;
       const recipe = recipes[name];
       if (recipe) {
         try {
-          recipe();
+          recipe(arg);
         } catch (error) {
           // audio is decorative — never let it break gameplay
         }

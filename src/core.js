@@ -29,6 +29,7 @@ PS.SETTINGS = {
   stormFieldOffset: 150,
   stormArmMs: 250,
   stormSlopPerHit: 0.02,
+  stormMaxCharge: 12,
   minTelegraphMs: 480,
   minWindowMs: 95,
   telegraphShrinkPerSecond: 8,

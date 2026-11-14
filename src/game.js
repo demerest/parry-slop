@@ -44,6 +44,11 @@ PS.game = (function () {
     ripple: null,
     stormActive: false,
     stormStart: -1,
+    stormCharge: 0,
+    stormFlash: 0,
+    nextStormFlashAt: 0,
+    bolts: [],
+    implode: null,
     zaps: [],
     shock: null,
     act: 1,
@@ -83,7 +88,7 @@ PS.game = (function () {
     });
   }
 
-  function addParticles(x, y, color, count, spread) {
+  function addParticles(x, y, color, count, spread, shape) {
     for (let i = 0; i < count; i++) {
       if (state.particles.length >= S.maxParticles) state.particles.shift();
       const angle = PS.rand(0, Math.PI * 2);
@@ -93,7 +98,8 @@ PS.game = (function () {
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed - 1,
         life: PS.rand(250, 650), maxLife: 650,
-        color, size: PS.rand(2, 5)
+        color, size: PS.rand(2, 5),
+        shape: shape || "square"
       });
     }
   }
@@ -134,6 +140,27 @@ PS.game = (function () {
     const label = opts.label || (def.labelPool ? PS.pick(def.labelPool) : def.label);
     const layout = PS.layout || { H: 600, groundY: 430 };
 
+    let y;
+    if (opts.y !== undefined) {
+      y = opts.y;
+    } else {
+      const lanes = [0.34, 0.46, 0.58].map((f) => layout.H * f);
+      let best = lanes[0];
+      let bestGap = -1;
+      for (const lane of lanes) {
+        const cand = lane + PS.rand(-18, 18);
+        let gap = Infinity;
+        for (const other of state.attacks) {
+          if (!other.resolved) gap = Math.min(gap, Math.abs(other.y - cand));
+        }
+        if (gap > bestGap) {
+          bestGap = gap;
+          best = cand;
+        }
+      }
+      y = best;
+    }
+
     const attack = {
       def,
       id: def.id,
@@ -151,7 +178,7 @@ PS.game = (function () {
       cued: false,
       hitsLeft: def.hits || 1,
       hitGap: def.hitGap || 380,
-      y: opts.y !== undefined ? opts.y : PS.rand(layout.H * 0.32, layout.H * 0.62),
+      y,
       spin: PS.rand(0, Math.PI * 2),
       boss: Boolean(opts.boss)
     };
@@ -283,6 +310,11 @@ PS.game = (function () {
     state.ripple = null;
     state.stormActive = false;
     state.stormStart = -1;
+    state.stormCharge = 0;
+    state.stormFlash = 0;
+    state.nextStormFlashAt = 0;
+    state.bolts.length = 0;
+    state.implode = null;
     state.zaps.length = 0;
     state.shock = null;
     state.act = 1;
@@ -447,11 +479,18 @@ PS.game = (function () {
     const gain = hits * (S.baseScore + S.weirdBonus) + state.combo * S.comboScoreStep;
     state.score += gain;
     state.slop = PS.clamp(state.slop + S.stormSlopPerHit * hits, 0, 1);
-    state.shake = Math.max(state.shake, state.options.reducedShake ? 2 : 6);
+    state.stormCharge = Math.min(S.stormMaxCharge, state.stormCharge + hits);
+    state.shake = Math.max(state.shake, state.options.reducedShake ? 2 : Math.min(12, 6 + state.stormCharge * 0.5));
+    state.bolts.push({
+      x1: pos.x + PS.rand(-70, 70), y1: 24,
+      x2: pos.x, y2: pos.y,
+      born: state.clock, seed: PS.rand(0, 100), color: attack.color
+    });
+    if (state.bolts.length > 16) state.bolts.shift();
     state.zaps.push({ x: pos.x, y: pos.y, born: state.clock, color: attack.color });
     if (state.zaps.length > 12) state.zaps.shift();
-    addParticles(pos.x, pos.y, attack.color, 30, 9);
-    addParticles(pos.x, pos.y, "#ffffff", 10, 6);
+    addParticles(pos.x, pos.y, attack.color, 26, 9, "shard");
+    addParticles(pos.x, pos.y, "#ffffff", 12, 7);
     addText(
       attack.fake ? "IT WAS FINE. NOW IT IS NOT." : PS.pick(["VAPORIZED", "AUTO-PARRIED", "SLOP INCINERATED", "DELETE."]),
       pos.x, pos.y - 46, 22, "#ff4dff", 700
@@ -465,7 +504,8 @@ PS.game = (function () {
       setBanner("CREDITS", "thanks for parrying. there is no ending.", 2200, "#ffffff");
     }
     milestoneCheck();
-    PS.audio.play("zap");
+    PS.audio.play("stormHit", { cat: attack.def.category, combo: state.combo, charge: state.stormCharge });
+    if (state.stormCharge % 3 === 0) PS.audio.play("thunder");
   }
 
   function whiff(attack) {
@@ -583,6 +623,7 @@ PS.game = (function () {
     state.shake *= Math.pow(0.86, step);
     state.flash *= Math.pow(0.85, step);
     state.hitFlash *= Math.pow(0.88, step);
+    state.stormFlash *= Math.pow(0.82, step);
     state.fade = Math.max(0, state.fade - dt / 400);
   }
 
@@ -607,15 +648,30 @@ PS.game = (function () {
       if (state.stormActive) {
         if (state.clock >= state.weirdUntil) {
           state.stormActive = false;
+          state.stormCharge = 0;
+          state.implode = { born: state.clock };
           setBanner("SLOP CONTAINED", "back to manual parrying", 1500, "#7dff7d");
           PS.audio.play("contain");
-        } else if (state.clock >= state.stormStart + S.stormArmMs) {
+        } else {
           const L = PS.layout || { W: 800, H: 600, s: 1, stickmanX: 200, groundY: 430 };
-          const fieldX = stickmanX() + S.stormFieldOffset * L.s;
-          for (const a of state.attacks) {
-            if (a.resolved) continue;
-            const pos = PS.render.attackPos(a, state.clock, L);
-            if (pos.x <= fieldX) autoDestroy(a, pos);
+          if (state.clock >= state.nextStormFlashAt) {
+            state.nextStormFlashAt = state.clock + PS.rand(900, 1900);
+            state.stormFlash = state.options.flashSafe ? 0.22 : 0.5;
+            state.bolts.push({
+              ambient: true,
+              x1: PS.rand(0, L.W), y1: 30,
+              x2: PS.rand(0, L.W), y2: L.groundY + 40 * L.s,
+              born: state.clock, seed: PS.rand(0, 100), color: "#59c2ff"
+            });
+            PS.audio.play("rumble");
+          }
+          if (state.clock >= state.stormStart + S.stormArmMs) {
+            const fieldX = stickmanX() + S.stormFieldOffset * L.s;
+            for (const a of state.attacks) {
+              if (a.resolved) continue;
+              const pos = PS.render.attackPos(a, state.clock, L);
+              if (pos.x <= fieldX) autoDestroy(a, pos);
+            }
           }
         }
       }
@@ -632,7 +688,9 @@ PS.game = (function () {
       resolveMisses();
       state.attacks = state.attacks.filter((a) => !(a.resolved && state.clock > a.impactClock + 450));
       state.zaps = state.zaps.filter((z) => state.clock - z.born < 420);
+      state.bolts = state.bolts.filter((b) => state.clock - b.born < (b.ambient ? 260 : 320));
       if (state.shock && state.clock - state.shock.born > 900) state.shock = null;
+      if (state.implode && state.clock - state.implode.born > 500) state.implode = null;
       if (state.ripple && state.clock - state.ripple.born > S.slowmoRippleMs) state.ripple = null;
       state.slop = Math.max(0, state.slop - S.slopDecayPerSecond * (dt / 1000));
       updateEffects(dt * scale);

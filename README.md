@@ -48,12 +48,15 @@ unavailable).
 
 Parrying nonsense fills the Slop Meter; it drains over time. Max it out and
 **SLOP OVERFLOW** triggers a **SLOP STORM**: a shockwave bursts from the stickman,
-time dilates, and for eight seconds an energy barrier in front of him
-auto-vaporizes every incoming attack — explosions, zap rings, score and combo
-credit, no input needed. Every parry (manual or auto) counts as weird during the
-storm. A countdown beside the meter shows time left; when it ends, **SLOP
-CONTAINED** returns you to manual parrying. Banners render behind attacks, so
-the warning never hides what is coming at you.
+time dilates, and for eight seconds a tempest takes over — roiling clouds,
+diagonal slop-rain, ambient lightning, and a spinning vortex around the stickman
+that calls jagged sky-bolts down onto every incoming attack. Vaporized objects
+shatter into shards with category-specific, combo-pitched destruction sounds
+and thunder claps; score and combo credit accrue with no input needed, and every
+parry during the storm counts as weird. Charge pips and a countdown beside the
+meter track intensity and time left; when it
+ends, the vortex implodes and **SLOP CONTAINED** returns you to manual parrying.
+Banners render behind attacks, so the warning never hides what is coming at you.
 
 ### Progression
 

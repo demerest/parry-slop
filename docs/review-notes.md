@@ -103,6 +103,29 @@ Two fixes from play feedback:
   storm end rolls SLOP CONTAINED and restores manual parrying. Auto-destroys
   add only 0.02 slop per hit so storms cannot self-sustain indefinitely.
 
+### 12. The storm must look like a storm
+
+Play feedback: the energy barrier read as a shield, not a storm, and every
+destroy sounded identical. Rebuilt as a tempest:
+
+- Roiling two-layer cloud bank with magenta underglow, diagonal tri-color slop
+  rain whose density scales with storm charge, ambient sky-to-ground lightning
+  with rumble, and a counter-rotating three-ring vortex with orbiting debris
+  shards around the stickman (spin rate scales with charge).
+- Destruction is now a jagged flickering sky-to-target bolt (white core, colored
+  glow) plus triangular shard particles instead of square confetti; charge pips
+  beside the countdown show storm intensity; storm end collapses the vortex
+  with a contracting green implosion ring.
+- Sound is per-category and combo-pitched: physical = sub thud + crack,
+  emotional = warped wah, internet/responsibility = descending bit-crush
+  arpeggio + static, meta/concept = detuned error buzz, fake = comedic squeak;
+  every third destroy layers a thunder clap; ambient flashes carry rumble.
+- Flash-safe mode converts ambient lightning flashes to border glow; reduced
+  shake caps strike shake. Lobbed apex clamped to y>=150 so falling objects
+  never cross the top-right HUD band (buttons/hearts stay unobstructed).
+- Spawns pick the vertical lane (0.34/0.46/0.58 of H) farthest from live
+  attacks, so concurrent cards/bubbles do not mask each other's labels.
+
 ## Phase status
 
 See the checkboxes in `implementation-phases.md` — updated as phases land.

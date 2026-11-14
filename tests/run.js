@@ -536,6 +536,8 @@
     assert(state.score > scoreBefore, "no score from auto-destroy");
     assert(state.stats.parries > parriesBefore, "no parry credit");
     assert(state.combo >= 2, "combo should build during storm");
+    assert(state.stormCharge > 0, "storm charge missing");
+    assert(state.bolts.some((x) => !x.ambient), "strike bolt missing");
   });
 
   test("storm ends and returns to manual parrying", function () {

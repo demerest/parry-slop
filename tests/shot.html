@@ -80,8 +80,11 @@
         g.state.slop = 0.99;
         g.press();
         g.game.spawnAttack(PS.ATTACK_BY_ID.insult, { telegraph: 1500, y: PS.layout.H * 0.3, label: "SKILL ISSUE" });
+        advance(400);
         g.game.spawnAttack(PS.ATTACK_BY_ID.piano, { telegraph: 1700, y: PS.layout.H * 0.5 });
-        advance(800);
+        let guard = 0;
+        while (!g.state.bolts.some((b) => !b.ambient) && guard++ < 120) advance(50);
+        advance(60);
         g.state.score = 9400;
         g.state.combo = 26;
       } else if (scene === "boss") {

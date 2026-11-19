@@ -1,0 +1,5 @@
+Generative AI (the Qwen Code coding assistant) was used to write and refactor this game's JavaScript code, its automated test suite, and its documentation, working from a human-written game design document. The human author directed every feature, playtested each build, and requested all revisions (perfect-parry slow motion, the SLOP STORM overflow event, its tempest redesign, and per-category destruction sounds).
+
+No generative AI was used for media assets. Every visual is drawn procedurally at runtime with Canvas 2D, and every sound is synthesized at runtime with the Web Audio API - there are no image, audio, or font files in the project at all. The cover image and all screenshots are direct captures of the running game, not AI-generated images.
+
+AI-written code was verified before release with a 38-assertion headless-browser test suite (timing fairness, scoring, bosses, overflow, determinism, frame budget) plus manual screenshot review at desktop and narrow mobile viewports.
